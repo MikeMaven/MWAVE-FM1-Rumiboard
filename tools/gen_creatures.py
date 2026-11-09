@@ -44,10 +44,13 @@ FRAMES = {
     "bass_anglerfish": {1: "docs/creatures/refs/frames/bass_anglerfish_2.jpg"},
     "stab_bulldog": {1: ("docs/creatures/refs/frames/stab_bulldog_ab.jpg", (0, 0, 0.5, 1)),      # A: the squash
                      2: ("docs/creatures/refs/frames/stab_bulldog_ab.jpg", (0.5, 0, 1, 1))},     # B: the launch
+    "pluck_chameleon": {1: ("docs/creatures/refs/frames/pluck_chameleon_ab.jpg", (0, 0, 0.5, 1)),   # A: the snap
+                        2: ("docs/creatures/refs/frames/pluck_chameleon_ab.jpg", (0.5, 0, 1, 1))},  # B: the reach
 }
 # A sheet's poses in another order (the sheet's indices for the four frames), before FRAMES replace any: the
 # terrier keeps idle and the bark and drops its own squash and tail wag for the in-betweens.
-ORDER = {"stab_bulldog": [0, 1, 2, 2]}             # idle, (A), (B), the bark
+ORDER = {"stab_bulldog": [0, 1, 2, 2],             # idle, (A), (B), the bark
+         "pluck_chameleon": [0, 1, 2, 2]}          # perch, (A), (B), the bend (the sheet's left-facing fourth dropped)
 
 
 def frame_image(spec):

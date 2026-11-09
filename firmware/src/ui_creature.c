@@ -43,6 +43,7 @@ static struct {
     uint8_t act;                            /* steps since the onset (255: none in a while) */
     uint8_t rel;                            /* steps since the sound ended (255: long ago) */
     uint8_t phase, lane, held, rising;      /* a step counter; the last drum lane hit; notes held; the envelope rising */
+    int8_t bend;                            /* the pitch bend, -16 .. 16 (the chameleon's tongue waves) */
     uint8_t peak;                           /* the envelope's recent peak (m_env >> 7), falling slowly: the cloud's scale */
     uint32_t ms;                            /* fm1_ms at the last step */
 } cr;
@@ -135,6 +136,7 @@ static void creature_step(const track_t *t, int held)
     }
     if (onset) { cr.act = 0; cr.rel = 255; cr.idle = 0; }
     cr.rising = (uint8_t)(env > cr.env + 200);
+    cr.bend = (int8_t)clamp(t->bend_raw / 512, -16, 16);
     if ((env >> 7) > cr.peak) cr.peak = (uint8_t)(env >> 7);
     sounding = drum ? (cr.act < 10u) : (held || env > 32767 / 8);
     cr.held = (uint8_t)sounding;
@@ -160,12 +162,12 @@ static void creature_step(const track_t *t, int held)
 
 /* a note's frames, per creature: the attack frames (CR_FRAME_STEPS steps each), the frame held while the sound
  * lasts, the release frames (0xFF: none). The frames in order: the terrier's idle, squash, launch, bark; the fish's
- * ready, opening, blast, return; the chameleon's perch, snap, bend (its fourth faces the other way: unused). */
+ * ready, opening, blast, return; the chameleon's perch, snap, reach, and the bend (held with the pitch wheel moved). */
 typedef struct { uint8_t att[2], hold, rel[2]; } cr_seq_t;
 static const cr_seq_t CR_SEQ[CR_N] = {
     [CR_FISH] = {{1, 0xFF}, 2, {3, 0xFF}},
     [CR_BULLDOG] = {{1, 2}, 3, {2, 1}},
-    [CR_CHAMELEON] = {{1, 0xFF}, 2, {0xFF, 0xFF}},
+    [CR_CHAMELEON] = {{1, 0xFF}, 2, {1, 0xFF}},
     [CR_HEDGEHOG] = {{1, 0xFF}, 2, {3, 0xFF}},
     [CR_AXOLOTL] = {{1, 0xFF}, 2, {3, 0xFF}},
 };
@@ -176,6 +178,8 @@ static uint32_t creature_pose(uint32_t kind)
 {
     uint32_t a = cr.act, r = cr.rel, i;
     const cr_seq_t *q = &CR_SEQ[kind < CR_N ? kind : 0];
+    if (kind == CR_CHAMELEON && cr.held && a >= CR_FRAME_STEPS && (cr.bend > 3 || cr.bend < -3))
+        return 3;                                       /* held with the pitch wheel moved: the tongue waves */
     switch (kind) {
     case CR_CLOUD: {                                    /* the envelope's course, against its recent peak: churning as
                                                          * it rises, full bloom near the top, dissipating as it falls */
@@ -210,7 +214,7 @@ static uint32_t creature_sig(void)
 {
     uint32_t s = (uint32_t)(cr.p + 256) * 7u + cr.key * 131u + cr.trk + (cr.vel >= 96u && cr.env > 32767 / 4) * 7919u +
                  (cr.act < 16u ? cr.act : 16u) * 263u + (cr.rel < 16u ? cr.rel : 16u) * 613u + cr.lane * 17u + cr.held * 5u +
-                 (uint32_t)(cr.env >> 10) * 37u + cr.rising * 3u + cr.peak * 11u;
+                 (uint32_t)(cr.env >> 10) * 37u + cr.rising * 3u + cr.peak * 11u + (uint32_t)(cr.bend + 16) * 1009u;
     if (cr.idle > 20u || cr.act < 16u)
         s += cr.phase * 104729u;                        /* (a bob, a jump, the sway, the record) */
     return s;
