@@ -29,6 +29,7 @@ class Melodee extends AudioWorkletProcessor {
     else if (m.type === "buttons") ex.web_buttons(m.mask >>> 0);
     else if (m.type === "encoder") ex.web_encoder(m.id, m.n | 0);
     else if (m.type === "master") ex.web_master(m.value | 0);
+    else if (m.type === "creature") ex.web_creature(m.value | 0);
     else if (m.type === "midi") ex.web_midi_in(m.data[0], m.data[1] || 0, m.data[2] || 0);
   }
 

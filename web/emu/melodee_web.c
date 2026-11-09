@@ -67,6 +67,12 @@ EXPORT(web_master) void web_master(uint32_t v)        /* the MASTER knob, 0..102
         v = 1023u;
     song.master_q12 = (v * v) >> 8;
 }
+EXPORT(web_creature) void web_creature(uint32_t k)   /* Rumiboard: the page's Creature picker (0: the sound's own) */
+{
+    cr_force = (uint8_t)(k < CR_N ? k : 0u);
+    memset(&cr, 0, sizeof cr);
+    ui.force = 1;
+}
 EXPORT(web_midi_in) void web_midi_in(uint32_t st, uint32_t d1, uint32_t d2)
 {
     midi_in_q[mi_w++ % MQ] = (st >> 4) | (st & 0xFFu) << 8 | (d1 & 0x7Fu) << 16 | (d2 & 0x7Fu) << 24;

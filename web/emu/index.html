@@ -54,6 +54,11 @@
   </div>
   <div class="bar">
     <label class="small">MIDI in <select id="midiin"><option value="">none</option></select></label>
+    <label class="small">Creature <select id="creature">
+      <option value="0">the sound's own</option><option value="1">blob</option><option value="2">anglerfish (bass)</option>
+      <option value="3">bulldog (stabs)</option><option value="4">chameleon (pluck / lead)</option><option value="5">cloud (pad)</option>
+      <option value="6">octopus (drums)</option><option value="7">hedgehog (felted piano)</option><option value="8">axolotl (keys)</option>
+      <option value="9">sloth (lofi bus)</option></select></label>
     <span class="small" id="status"></span>
   </div>
   <p class="small">Rumiboard is GPL-3.0, no warranty. <a href="https://github.com/mikemaven/MWAVE-FM1-Rumiboard">Source</a>.
@@ -254,6 +259,7 @@ $("midiin").addEventListener("pointerdown", async () => {
   midi.onstatechange = fill;
   fill();
 }, { once: true });
+$("creature").addEventListener("change", () => send({ type: "creature", value: $("creature").value | 0 }));
 $("midiin").addEventListener("change", () => {
   if (midiIn) midiIn.onmidimessage = null;
   midiIn = midi && midi.inputs.get($("midiin").value);
