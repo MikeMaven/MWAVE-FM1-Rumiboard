@@ -37,11 +37,27 @@ PATCHES = {
     "master_sloth": [("fill", None, 56, 56, 72, 70, (0, 4, 5, 6), 1)],
 }
 # Single frames that replace a sheet's pose (0 .. 3): an image of one figure, possibly inside a mock of the screen
-# (docs/creatures/refs/frames/). The figure is the largest connected piece whose box spans less than 60 % of the
-# image's width (a drawn device frame is wider; text is small).
+# (docs/creatures/refs/frames/), or (path, (fx0, fy0, fx1, fy1)): that part of the image, as fractions (an image
+# holding two mocks side by side: the left half, the right half). The figure is the largest connected piece whose
+# box spans less than 60 % of the (part of the) image's width (a drawn device frame is wider; text is small).
 FRAMES = {
     "bass_anglerfish": {1: "docs/creatures/refs/frames/bass_anglerfish_2.jpg"},
+    "stab_bulldog": {1: ("docs/creatures/refs/frames/stab_bulldog_ab.jpg", (0, 0, 0.5, 1)),      # A: the squash
+                     2: ("docs/creatures/refs/frames/stab_bulldog_ab.jpg", (0.5, 0, 1, 1))},     # B: the launch
 }
+# A sheet's poses in another order (the sheet's indices for the four frames), before FRAMES replace any: the
+# terrier keeps idle and the bark and drops its own squash and tail wag for the in-betweens.
+ORDER = {"stab_bulldog": [0, 1, 2, 2]}             # idle, (A), (B), the bark
+
+
+def frame_image(spec):
+    """a FRAMES entry's image: the file, or the part of it"""
+    path, box = (spec, None) if isinstance(spec, str) else spec
+    fim = Image.open(path).convert("RGB")
+    if box:
+        w, h = fim.size
+        fim = fim.crop((int(w * box[0]), int(h * box[1]), int(w * box[2]), int(h * box[3])))
+    return fim
 
 
 def find_figure(im, bg):
@@ -55,10 +71,10 @@ def find_figure(im, bg):
     n, bx0, by0, bx1, by1 = comps[0]
     fh, fw = by1 - by0, bx1 - bx0
     for m, cx0, cy0, cx1, cy1 in comps[1:]:            # its nearby pieces (rings, marks): at least a fifth of its
-        if m < 6 or m > n // 2: continue                  # height (letters are smaller), narrower than half of it,
-        if (cy1 - cy0) < fh // 5 or (cx1 - cx0) > fw // 2: continue   # and close by
-        if cx1 < bx0 - fw // 4 or cx0 > bx1 + fw // 4: continue
-        if cy1 < by0 - fh // 4 or cy0 > by1 + fh // 4: continue
+        if m < max(6, n // 40) or m > n // 2: continue    # height and a 40th of its area (letters are smaller),
+        if (cy1 - cy0) < fh // 5 or (cx1 - cx0) > fw // 2: continue   # narrower than half of it, beside or above
+        if cx1 < bx0 - fw // 4 or cx0 > bx1 + fw // 4: continue        # it (a creature stands on its floor: nothing
+        if cy1 < by0 - fh // 4 or cy0 > by1 - fh // 8: continue        # below it; a mock's caption is below)
         bx0, by0, bx1, by1 = min(bx0, cx0), min(by0, cy0), max(bx1, cx1), max(by1, cy1)
     return (bx0 * s, by0 * s, bx1 * s + s - 1, by1 * s + s - 1)
 
@@ -262,11 +278,13 @@ def main():
         role_rgb = {0: BG_RGB, 1: cols[0], 2: cols[1], 3: DARK_RGB, 4: BG_RGB, 5: cols[2], 6: cols[3], 7: BG_RGB}
         roles = Image.new("L", (a.w * 4, a.h), 0)
         prev = Image.new("RGB", (a.w * 4, a.h), BG_RGB)
-        for k, (x0, y0, x1, y1) in enumerate(boxes[:4]):
+        order = ORDER.get(name, [0, 1, 2, 3])
+        for k in range(4):
+            x0, y0, x1, y1 = boxes[order[k]] if order[k] < len(boxes) else boxes[-1]
             pose = im.crop((x0, y0, x1, y1))
             fbg = bg
             if k in FRAMES.get(name, {}):              # a frame of its own replaces this pose
-                fim = Image.open(FRAMES[name][k]).convert("RGB")
+                fim = frame_image(FRAMES[name][k])
                 fbg = fim.getpixel((8, 8))
                 pose = fim.crop(find_figure(fim, fbg))
             pose.thumbnail((a.w - 4, a.h - 4), Image.BOX)       # fit, a 2 px margin

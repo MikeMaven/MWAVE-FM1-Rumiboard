@@ -158,10 +158,24 @@ static void creature_step(const track_t *t, int held)
     }
 }
 
+/* a note's frames, per creature: the attack frames (CR_FRAME_STEPS steps each), the frame held while the sound
+ * lasts, the release frames (0xFF: none). The frames in order: the terrier's idle, squash, launch, bark; the fish's
+ * ready, opening, blast, return; the chameleon's perch, snap, bend (its fourth faces the other way: unused). */
+typedef struct { uint8_t att[2], hold, rel[2]; } cr_seq_t;
+static const cr_seq_t CR_SEQ[CR_N] = {
+    [CR_FISH] = {{1, 0xFF}, 2, {3, 0xFF}},
+    [CR_BULLDOG] = {{1, 2}, 3, {2, 1}},
+    [CR_CHAMELEON] = {{1, 0xFF}, 2, {0xFF, 0xFF}},
+    [CR_HEDGEHOG] = {{1, 0xFF}, 2, {3, 0xFF}},
+    [CR_AXOLOTL] = {{1, 0xFF}, 2, {3, 0xFF}},
+};
+#define CR_FRAME_STEPS 3u
+
 /* the pose a creature shows now (0 .. 3, the sheet's), from the counters */
 static uint32_t creature_pose(uint32_t kind)
 {
-    uint32_t a = cr.act, r = cr.rel;
+    uint32_t a = cr.act, r = cr.rel, i;
+    const cr_seq_t *q = &CR_SEQ[kind < CR_N ? kind : 0];
     switch (kind) {
     case CR_CLOUD: {                                    /* the envelope's course, against its recent peak: churning as
                                                          * it rises, full bloom near the top, dissipating as it falls */
@@ -170,10 +184,6 @@ static uint32_t creature_pose(uint32_t kind)
         if (e * 10 < pk * 2) return r < 40u && cr.act != 255u ? 3 : 0;
         return cr.rising || a < 12u ? 1 : 3;
     }
-    case CR_CHAMELEON:                                  /* (its fourth pose faces the other way: not used) */
-        if (a < 4u) return 1;
-        if (cr.held) return 2;
-        return 0;
     case CR_OCTOPUS:                                    /* the lanes */
         if (a < 6u) return cr.lane == 3u || cr.lane == 4u ? 2 : 1;
         return (cr.phase / 16u) & 1u ? 3 : 0;
@@ -181,10 +191,16 @@ static uint32_t creature_pose(uint32_t kind)
         if (a < 6u) return 2;
         if (a < 16u) return 3;
         return (cr.phase / 24u) & 1u;
-    default:                                            /* attack, then sustain while it sounds, then the release pose */
-        if (a < 4u) return 1;
-        if (cr.held) return 2;
-        if (r < 8u) return 3;
+    default:                                            /* the attack frames, the held frame while it sounds, then the
+                                                         * release frames, then rest */
+        for (i = 0; i < 2u; i++)
+            if (q->att[i] != 0xFFu && a < CR_FRAME_STEPS * (i + 1u))
+                return q->att[i];
+        if (cr.held || a < CR_FRAME_STEPS * 2u + 1u)
+            return q->hold;
+        for (i = 0; i < 2u; i++)
+            if (q->rel[i] != 0xFFu && r < CR_FRAME_STEPS * (i + 1u))
+                return q->rel[i];
         return 0;
     }
 }
