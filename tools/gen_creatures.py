@@ -36,6 +36,31 @@ BG_RGB, DARK_RGB = (234, 232, 226), (26, 26, 30)       # the preview's backgroun
 PATCHES = {
     "master_sloth": [("fill", None, 56, 56, 72, 70, (0, 4, 5, 6), 1)],
 }
+# Single frames that replace a sheet's pose (0 .. 3): an image of one figure, possibly inside a mock of the screen
+# (docs/creatures/refs/frames/). The figure is the largest connected piece whose box spans less than 60 % of the
+# image's width (a drawn device frame is wider; text is small).
+FRAMES = {
+    "bass_anglerfish": {1: "docs/creatures/refs/frames/bass_anglerfish_2.jpg"},
+}
+
+
+def find_figure(im, bg):
+    """one figure in an image: its box in the image's pixels"""
+    w, h = im.size
+    s = 4 if w > 800 else 1
+    small = im.resize((w // s, h // s), Image.BOX) if s > 1 else im
+    px = small.load()
+    comps = [c for c in components(px, 0, small.width, 0, small.height, bg) if (c[3] - c[1]) < small.width * 0.6]
+    comps.sort(reverse=True)
+    n, bx0, by0, bx1, by1 = comps[0]
+    fh, fw = by1 - by0, bx1 - bx0
+    for m, cx0, cy0, cx1, cy1 in comps[1:]:            # its nearby pieces (rings, marks): at least a fifth of its
+        if m < 6 or m > n // 2: continue                  # height (letters are smaller), narrower than half of it,
+        if (cy1 - cy0) < fh // 5 or (cx1 - cx0) > fw // 2: continue   # and close by
+        if cx1 < bx0 - fw // 4 or cx0 > bx1 + fw // 4: continue
+        if cy1 < by0 - fh // 4 or cy0 > by1 + fh // 4: continue
+        bx0, by0, bx1, by1 = min(bx0, cx0), min(by0, cy0), max(bx1, cx1), max(by1, cy1)
+    return (bx0 * s, by0 * s, bx1 * s + s - 1, by1 * s + s - 1)
 
 
 def to565(c):
@@ -239,12 +264,17 @@ def main():
         prev = Image.new("RGB", (a.w * 4, a.h), BG_RGB)
         for k, (x0, y0, x1, y1) in enumerate(boxes[:4]):
             pose = im.crop((x0, y0, x1, y1))
+            fbg = bg
+            if k in FRAMES.get(name, {}):              # a frame of its own replaces this pose
+                fim = Image.open(FRAMES[name][k]).convert("RGB")
+                fbg = fim.getpixel((8, 8))
+                pose = fim.crop(find_figure(fim, fbg))
             pose.thumbnail((a.w - 4, a.h - 4), Image.BOX)       # fit, a 2 px margin
             ox, oy = k * a.w + (a.w - pose.width) // 2, a.h - 2 - pose.height   # standing on the canvas's floor
             pp = pose.load()
             for y in range(pose.height):
                 for x in range(pose.width):
-                    r = classify(pp[x, y], bg, cols)
+                    r = classify(pp[x, y], fbg, cols)
                     roles.putpixel((ox + x, oy + y), r)
         roles = despeckle(roles)
         rp = roles.load()
