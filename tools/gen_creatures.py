@@ -11,10 +11,11 @@ pose's bounding box is scaled to fit the creature's canvas (120 x 88 by default)
 device recolours a sprite with the palette (body = the track's colour, accent = its companion shade, dark = the text
 colour, light = a light detail, 0 = transparent background):
 
-  0 bg (transparent)   1 body   2 accent   3 dark   4 light   5 second accent   (6, 7 unused)
+  0 bg (transparent)   1 body   2 accent   3 dark   4 light   5 second accent   6 third accent   (7 unused)
 
-The roles are classified by nearest colour against the sheet's own colours: body, accent and a second accent (the
-three most frequent non-background colour clusters, shades merged), dark (near black) and light (near white). The
+The roles are classified by nearest colour against the sheet's own colours: body, accent, a second and a third
+accent (the four most frequent non-background colour clusters, shades merged), dark (near black) and light (near
+white). The
 sheet's colours travel with the sprite (the firmware draws each creature in its own colours, as designed; the
 track's colour stays on the chrome). Output: one PNG preview per creature (docs/creatures/sprites/<name>.png, 4x),
 a role-index sheet (<name>.roles.png) and, with --header, the firmware's table. Run from the repository root.
@@ -29,6 +30,12 @@ from PIL import Image
 SHEETS = ["bass_anglerfish", "stab_bulldog", "pluck_chameleon", "pad_cloud", "drums_octopus", "piano_hedgehog",
           "keys_axolotl", "master_sloth"]
 BG_RGB, DARK_RGB = (234, 232, 226), (26, 26, 30)       # the preview's background (RUMI) and the dark role
+# Corrections to the sheets, on the role map (canvas px): ("fill", poses or None for all, x0, y0, x1, y1, roles, role):
+# pixels of the given roles in the box become the role. The sloth: the paw tucked under its body left of the face
+# is a third arm (the one reaching up is that arm); its seams (cut-outs) become body, so the arm vanishes into it.
+PATCHES = {
+    "master_sloth": [("fill", None, 56, 56, 72, 70, (0, 4, 5, 6), 1)],
+}
 
 
 def to565(c):
@@ -123,8 +130,8 @@ def find_panels(im, bg):
 
 
 def sheet_colours(im, bg, boxes):
-    """body, accent, second accent: the three most frequent non-background colour clusters (shades merged; not bg,
-    dark or light); a sheet with fewer repeats its last"""
+    """body, accent, a second and a third accent: the most frequent non-background colour clusters (shades merged;
+    not bg, dark or light); a sheet with fewer repeats its last"""
     # the figures' own pixels (no background, dark or light), binned to 16 levels a channel, the bins ranked
     crop = im.crop((boxes[0][0], boxes[0][1], boxes[-1][2], boxes[-1][3]))
     crop.thumbnail((900, 400), Image.NEAREST)
@@ -157,9 +164,11 @@ def sheet_colours(im, bg, boxes):
     # the second accent: a saturated colour if the sheet has one left (a grey sloth keeps its indigo record), else
     # the next cluster apart from both
     rest = [c for n, c in cands if all(apart(c, k) for k in cols)]
-    sat = [c for c in rest if max(c) - min(c) > 32]
+    sats = [c for c in rest if max(c) - min(c) > 32]
     if len(cols) < 2: cols.append(cols[0])
-    cols.append((sat or rest or [cols[-1]])[0])
+    cols.append((sats or rest or [cols[-1]])[0])
+    rest = [c for c in rest if all(apart(c, k) for k in cols)]   # the third accent: the next apart from all three
+    cols.append((rest or [cols[-1]])[0])
     return cols
 
 
@@ -167,7 +176,7 @@ def classify(p, bg, cols):
     if is_bg(p, bg, 30): return 0
     if max(p) < 80: return 3
     if min(p) > 225: return 4
-    cands = [(dist(p, cols[0]), 1), (dist(p, cols[1]), 2), (dist(p, cols[2]), 5), (dist(p, bg), 0),
+    cands = [(dist(p, cols[0]), 1), (dist(p, cols[1]), 2), (dist(p, cols[2]), 5), (dist(p, cols[3]), 6), (dist(p, bg), 0),
              (dist(p, (20, 20, 20)), 3), (dist(p, (245, 245, 245)), 4)]
     return min(cands)[1]
 
@@ -225,7 +234,7 @@ def main():
         if len(boxes) < 4:
             print(f"{name}: {len(boxes)} poses found (wanted 4)")
         cols = sheet_colours(im, bg, boxes)
-        role_rgb = {0: BG_RGB, 1: cols[0], 2: cols[1], 3: DARK_RGB, 4: BG_RGB, 5: cols[2], 6: BG_RGB, 7: BG_RGB}
+        role_rgb = {0: BG_RGB, 1: cols[0], 2: cols[1], 3: DARK_RGB, 4: BG_RGB, 5: cols[2], 6: cols[3], 7: BG_RGB}
         roles = Image.new("L", (a.w * 4, a.h), 0)
         prev = Image.new("RGB", (a.w * 4, a.h), BG_RGB)
         for k, (x0, y0, x1, y1) in enumerate(boxes[:4]):
@@ -239,6 +248,12 @@ def main():
                     roles.putpixel((ox + x, oy + y), r)
         roles = despeckle(roles)
         rp = roles.load()
+        for op, poses, x0, y0, x1, y1, from_roles, to_role in PATCHES.get(name, []):
+            for k in (range(4) if poses is None else poses):
+                for y in range(y0, y1):
+                    for x in range(k * a.w + x0, k * a.w + x1):
+                        if rp[x, y] in from_roles:
+                            rp[x, y] = to_role
         for y in range(roles.height):
             for x in range(roles.width):
                 prev.putpixel((x, y), role_rgb[rp[x, y]])
@@ -262,12 +277,12 @@ def main():
         lines = ["/* generated by tools/gen_creatures.py from docs/creatures/refs/ (the jpgs): the creatures' sprites (ui_creature.c).",
                  f" * {a.w} x {a.h} px frames, four poses a creature, in the order of CR_FISH .. CR_SLOTH; runs of a colour role:",
                  " * b = role << 5 | (n - 1) for n <= 31, else role << 5 | 31 then n - 32. Roles: 0 bg (transparent), 1 body, 2 accent,",
-                 " * 3 dark, 4 light, 5 second accent. CR_SPR_COLS: each creature's role colours (RGB565) from its sheet; roles 0 and 4",
+                 " * 3 dark, 4 light, 5 second accent, 6 third accent. CR_SPR_COLS: each creature's role colours (RGB565) from its sheet; roles 0 and 4",
                  " * are 0 there: the background. In the resource region (MELODEE_RES). */",
                  "#pragma once", "#include <stdint.h>",
                  f"#define CR_SPR_W {a.w}", f"#define CR_SPR_H {a.h}", f"#define CR_SPR_CREATURES {len(SHEETS)}", "#define CR_SPR_POSES 4",
                  "static const uint16_t CR_SPR_OFF[CR_SPR_CREATURES * CR_SPR_POSES + 1] = {" + ", ".join(str(o) for o in offs) + "};",
-                 "static const uint16_t CR_SPR_COLS[CR_SPR_CREATURES][8] = {" + ", ".join("{" + ", ".join(f"0x{c:04x}" if r not in (0, 4, 6, 7) else "0" for r, c in enumerate(p)) + "}" for p in palettes) + "};",
+                 "static const uint16_t CR_SPR_COLS[CR_SPR_CREATURES][8] = {" + ", ".join("{" + ", ".join(f"0x{c:04x}" if r not in (0, 4, 7) else "0" for r, c in enumerate(p)) + "}" for p in palettes) + "};",
                  f"static const uint8_t MELODEE_RES CR_SPR[{len(blob)}] = {{"]
         for i in range(0, len(blob), 24):
             lines.append("    " + ", ".join(f"0x{b:02x}" for b in blob[i:i + 24]) + ",")

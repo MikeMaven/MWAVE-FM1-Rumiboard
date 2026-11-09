@@ -48,5 +48,14 @@ the review renders through the test-only `cr_force`). Review renders: `creature_
 `tests/ui_render.c`; a filmstrip of each creature's action is made by the film tool in the scratchpad
 (to be added to tools/).
 
-Next: a creature id per preset (so a sound names its creature instead of its category deciding), the
-review's changes, the hop transition when ALGORITHM changes track.
+**A sound names its creature** (`ui_creature.c creature_of_entry`): a word of its name decides first (PIANO,
+FELT → hedgehog; EP, TINE, RHODES, SINE, BELL, KEYS → axolotl; STAB, BRASS, CHORD, HOUSE → bulldog; SUB,
+BASS, REESE → fish; PLUCK, LEAD, BEND, GLIDE, ARP → chameleon; PAD, CLOUD, SWELL, STRING, CHOIR → cloud;
+TAPE, LOFI, VINYL, CASSETTE → sloth; KIT, DRUM, PERC → octopus), then a per-factory-preset letter table
+(`PRESET_CREATURE`, empty so far), then the category. Our own banks will carry an id.
+
+**Sheet corrections** live in the tool (`PATCHES`): boxes on the role map where pixels change role, applied
+to every pose; the sloth's tucked third arm is removed this way.
+
+Next: in-between frames from the sheets' first and last poses (the tool takes any four frames in order;
+the firmware will then play them as a sequence and back), the hop transition when ALGORITHM changes track.

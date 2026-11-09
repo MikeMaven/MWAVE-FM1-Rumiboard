@@ -79,7 +79,11 @@ static void play_draw(void)
     stage_columns();                                    /* the knobs, always out */
     if (!ui.force && (ui.frame & 1u))
         return;
-    play_creature(creature_of(stage_sel_cat()));
+    {
+        uint32_t src, kk;
+        cur_entry(&src, &kk);
+        play_creature(creature_of_entry(src, kk));      /* (the sound names its creature; else its category's) */
+    }
     play_name();
     stage_band();
 }

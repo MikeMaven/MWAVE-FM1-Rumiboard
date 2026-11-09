@@ -49,6 +49,7 @@ static struct {
 static uint8_t cr_force;                    /* tests, the emulator: a creature to show regardless of the sound (0: none) */
 #define CR_STEP_MS 30u
 
+/* a sound's creature by its category (the fallback) */
 static uint32_t creature_of(uint32_t cat)
 {
     if (cr_force) return cr_force;
@@ -61,6 +62,52 @@ static uint32_t creature_of(uint32_t cat)
     case CAT_KEYS: case CAT_ORGAN: case CAT_BELL: return CR_AXOLOTL;
     default: return CR_BLOB;
     }
+}
+
+/* a sound names its creature: a word of its name (the first rule whose word starts a word of the name, '|': and
+ * ends it; browse.c name_has_word), else a letter per factory preset of its engine (CREATURE_LETTER's index is the
+ * creature; '.': none), else its category. Our own presets name theirs this way (and will carry an id when the
+ * RUMI / 1984 banks exist). */
+static const struct { uint8_t cr; const char *w; } CREATURE_WORDS[] = {
+    {CR_HEDGEHOG, "PIANO"}, {CR_HEDGEHOG, "FELT"}, {CR_HEDGEHOG, "HONKY"}, {CR_HEDGEHOG, "HARPSI"}, {CR_HEDGEHOG, "CLAV"},
+    {CR_AXOLOTL, "EP|"}, {CR_AXOLOTL, "E.P"}, {CR_AXOLOTL, "TINE"}, {CR_AXOLOTL, "RHODES"}, {CR_AXOLOTL, "WURL"},
+    {CR_AXOLOTL, "SINE"}, {CR_AXOLOTL, "BELL"}, {CR_AXOLOTL, "KEYS"}, {CR_AXOLOTL, "TOY"},
+    {CR_BULLDOG, "STAB"}, {CR_BULLDOG, "BRASS"}, {CR_BULLDOG, "HORN"}, {CR_BULLDOG, "CHORD"}, {CR_BULLDOG, "COMP"},
+    {CR_BULLDOG, "HOUSE"}, {CR_BULLDOG, "PUNCH"},
+    {CR_FISH, "SUB|"}, {CR_FISH, "BASS"}, {CR_FISH, "REESE"}, {CR_FISH, "808|"},
+    {CR_CHAMELEON, "PLUCK"}, {CR_CHAMELEON, "LEAD"}, {CR_CHAMELEON, "LD|"}, {CR_CHAMELEON, "BEND"}, {CR_CHAMELEON, "GLIDE"},
+    {CR_CHAMELEON, "SOLO"}, {CR_CHAMELEON, "ARP"}, {CR_CHAMELEON, "SYNC"},
+    {CR_CLOUD, "PAD"}, {CR_CLOUD, "CLOUD"}, {CR_CLOUD, "SWELL"}, {CR_CLOUD, "DREAM"}, {CR_CLOUD, "ATMOS"}, {CR_CLOUD, "STRING"},
+    {CR_CLOUD, "CHOIR"}, {CR_CLOUD, "VOX"}, {CR_CLOUD, "DRONE"}, {CR_CLOUD, "HAZE"},
+    {CR_SLOTH, "TAPE"}, {CR_SLOTH, "LOFI"}, {CR_SLOTH, "LO-FI"}, {CR_SLOTH, "VINYL"}, {CR_SLOTH, "CASSETTE"}, {CR_SLOTH, "VHS"},
+    {CR_OCTOPUS, "KIT|"}, {CR_OCTOPUS, "DRUM"}, {CR_OCTOPUS, "PERC"},
+};
+static const char CREATURE_LETTER[CR_N + 1u] = ".LFBCPOHAS";   /* a letter's index is its creature */
+static const char *const PRESET_CREATURE[NENGINES] = {0};      /* a letter per factory preset of an engine; none yet */
+static uint32_t creature_of_entry(uint32_t src, uint32_t k)
+{
+    static uint16_t last_src = 0xFFFFu, last_k;
+    static uint8_t last_cr;
+    uint32_t i, e;
+    char tag[6], nm[24];
+    if (cr_force) return cr_force;
+    if (src == last_src && k == last_k) return last_cr;
+    e = src_engine(src, k);
+    entry_label(src, k, tag, nm);
+    last_cr = 0;
+    for (i = 0; i < NELEM(CREATURE_WORDS) && !last_cr; i++)
+        if (name_has_word(nm, CREATURE_WORDS[i].w))
+            last_cr = CREATURE_WORDS[i].cr;
+    if (!last_cr && !src_slot(src) && e < NENGINES && PRESET_CREATURE[e] && k < ENGINES[e]->npresets) {
+        for (i = 1; i < CR_N && CREATURE_LETTER[i] != PRESET_CREATURE[e][k]; i++)
+            ;
+        if (i < CR_N) last_cr = (uint8_t)i;
+    }
+    if (!last_cr)
+        last_cr = (uint8_t)creature_of(entry_cat(src, k) % CAT_N);
+    if (e == ENGI_DRUM) last_cr = CR_OCTOPUS;           /* (a drum kit is the octopus whatever its name) */
+    last_src = (uint16_t)src; last_k = (uint16_t)k;
+    return last_cr;
 }
 
 /* one step on the clock: the counters, the blob's spring, and a note's onset */
