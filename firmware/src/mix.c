@@ -26,6 +26,7 @@ static volatile uint32_t kb_mask, kb_layer;
 static volatile uint8_t kb_lock;
 #define LIM_T 26000                              /* -2 dBFS: only overs, a chord does not duck a held note (#108) */
 static int32_t lim_env = LIM_T;
+static int32_t mix_peak;                         /* the master's peak since the UI last read it (Rumiboard: the sloth) */
 static int32_t dc_l, dc_r, dce_l, dce_r;
 
 /* DC blocker (~2 Hz), always on: a leaky integrator of the input (Q6 state) subtracted from it.
@@ -50,6 +51,7 @@ static __attribute__((noinline,section(".dsp_text"))) void master_out(int32_t *l
     al = *l < 0 ? -*l : *l;
     ar = *r < 0 ? -*r : *r;
     a = al > ar ? al : ar;
+    if (a > mix_peak) mix_peak = a;
     if (a > lim_env)
         lim_env += (a - lim_env) >> 2;
     else if (lim_env > LIM_T)

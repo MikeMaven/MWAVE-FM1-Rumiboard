@@ -292,7 +292,7 @@ static void stage_band(void)
                                                          * notes and the waveform) */
         int32_t x1 = 228;
         if (kind) {
-            creature_step(TSEL, held);
+            creature_step(kind, TSEL, held);
             x1 = creature_draw(kind, 232, ST_BAND_H - 2);
         }
         cv_over = 1;

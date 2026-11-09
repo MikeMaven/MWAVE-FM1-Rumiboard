@@ -21,9 +21,11 @@
  *   OCTOPUS    swing left / pad slam / knob twiddle / swing right   kick, snare, perc lanes: the slam; hats: the twiddle;
  *                                                             else swinging left and right with time
  *   HEDGEHOG   at guard / strike / vibration / damp           a note: the strike, the vibration while it rings, damp
- *   AXOLOTL    float / initiate flip / flip & trail / settle  a note: the flip, trailing while it sounds, settle
- *   SLOTH      lazy wobble / adjust weight / needle skip / return    idle: wobble and adjust in turn; a note (a peak,
- *                                                             later): the skip, then return
+ *   AXOLOTL    float / initiate flip / flip & trail / settle  held: it keeps turning in its bubble (the four frames
+ *                                                             round and round); let go: it settles, then floats
+ *   SLOTH      lazy wobble / adjust weight / needle skip / return    the master bus: lazy while the mix is quiet,
+ *                                                             adjusting its weight while it is loud, the needle
+ *                                                             skipping when the limiter catches a peak, then return
  * The sound's level: the track's output peak since the last step (mix.c t->peak, Q15, read and cleared here every
  * step as the Mixer's meter does: a 30 ms peak meter), or the amp envelope of its latest voice (mod.c m_env) when
  * that is higher (it is kept only while the modulation matrix runs). Onset: the level rising by a sixth of full
@@ -114,12 +116,18 @@ static uint32_t creature_of_entry(uint32_t src, uint32_t k)
 }
 
 /* one step on the clock: the counters, the blob's spring, and a note's onset */
-static void creature_step(track_t *t, int held)
+static void creature_step(uint32_t kind, track_t *t, int held)
 {
     uint32_t sel = song.sel % NTRK + 1u, steps = (fm1_ms - cr.ms) / CR_STEP_MS, l;
-    int32_t pk = t->peak, env, target = held ? 40 : 0, onset = 0, drum = drum_track(t), sounding;
+    int32_t pk = t->peak, env, target = held ? 40 : 0, onset = 0, drum = drum_track(t), sounding, master = kind == CR_SLOTH;
     t->peak = 0;                                        /* (the meter restarts: the level is the peak of this step) */
     env = pk > t->m_env ? pk : t->m_env;
+    if (master) {                                       /* the sloth listens to the master, not the track */
+        env = mix_peak > 32767 ? 32767 : mix_peak;
+        mix_peak = 0;
+        held = 0;
+        target = 0;
+    }
     if (cr.trk != sel) {                                /* another track: start at rest (a note already sounding there
                                                          * counts as an onset: a move to say hello) */
         memset(&cr, 0, sizeof cr);
@@ -128,7 +136,9 @@ static void creature_step(track_t *t, int held)
         cr.act = cr.rel = 255;
         steps = 0;
     }
-    if (drum) {                                         /* a lane just hit (stage_panel_hits: 10 frames lit, one less each
+    if (master) {                                       /* the limiter catching a peak: the needle skips */
+        if (lim_env > LIM_T + 256 && cr.act > 20u) onset = 1;
+    } else if (drum) {                                  /* a lane just hit (stage_panel_hits: 10 frames lit, one less each
                                                          * frame; this runs every other frame, so 10 or 9 is a new hit) */
         for (l = 0; l < NLANE; l++)
             if (stage.hit_t[l] >= 9u) { onset = 1; cr.lane = (uint8_t)l; }
@@ -142,7 +152,7 @@ static void creature_step(track_t *t, int held)
     cr.rising = (uint8_t)(env > cr.env + 200);
     cr.bend = (int8_t)clamp(t->bend_raw / 512, -16, 16);
     if ((env >> 7) > cr.peak) cr.peak = (uint8_t)(env >> 7);
-    sounding = drum ? (cr.act < 10u) : (held || env > 32767 / 8);
+    sounding = master ? env > 16000 : drum ? (cr.act < 10u) : (held || env > 32767 / 8);   /* (the master: loud) */
     cr.held = (uint8_t)sounding;
     cr.env = env;
     cr.key = t->m_key;
@@ -173,7 +183,6 @@ static const cr_seq_t CR_SEQ[CR_N] = {
     [CR_BULLDOG] = {{1, 2}, 3, {2, 1}},
     [CR_CHAMELEON] = {{1, 0xFF}, 2, {1, 0xFF}},
     [CR_HEDGEHOG] = {{1, 0xFF}, 2, {3, 0xFF}},
-    [CR_AXOLOTL] = {{1, 0xFF}, 2, {3, 0xFF}},
 };
 #define CR_FRAME_STEPS 3u
 
@@ -198,10 +207,15 @@ static uint32_t creature_pose(uint32_t kind)
         if (a < 10u) return cr.lane == 3u || cr.lane == 4u ? 2 : 1;
         if (a < 36u) return 0;
         return (cr.phase / 32u) & 1u ? 3 : 0;
-    case CR_SLOTH:                                      /* lazy in turn; a note: the skip */
-        if (a < 6u) return 2;
-        if (a < 16u) return 3;
-        return (cr.phase / 24u) & 1u;
+    case CR_AXOLOTL:                                    /* turning while held (a frame every 4 steps), settling after */
+        if (cr.held) return (a / 4u) % 4u;
+        if (r < 6u) return 3;
+        return 0;
+    case CR_SLOTH:                                      /* the skip and its return on a limiter peak; adjusting its
+                                                         * weight while the mix is loud; lazy otherwise */
+        if (a < 10u) return 2;
+        if (a < 20u) return 3;
+        return cr.held ? 1 : 0;
     default:                                            /* the attack frames, the held frame while it sounds, then the
                                                          * release frames, then rest */
         for (i = 0; i < 2u; i++)

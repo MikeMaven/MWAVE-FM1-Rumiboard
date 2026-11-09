@@ -24,8 +24,8 @@ static void play_creature(uint32_t kind)
         fm1_irq_off();
         for (i = 0; i < 4u; i++) held |= live_held[song.sel % NTRK][i] != 0u;
         fm1_irq_on();
-        creature_step(TSEL, held);
-        sig += creature_sig();
+        creature_step(kind, TSEL, held);
+        sig += creature_sig() + creature_pose(kind) * 7919u;   /* (a pose that turns with time: the axolotl held) */
         if (!ui.force && sig == play.cr)
             return;
         play.cr = sig;

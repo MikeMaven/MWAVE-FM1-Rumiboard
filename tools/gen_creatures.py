@@ -35,7 +35,8 @@ BG_RGB, DARK_RGB = (234, 232, 226), (26, 26, 30)       # the preview's backgroun
 # pixels of the given roles in the box become the role. The sloth: the paw tucked under its body left of the face
 # is a third arm (the one reaching up is that arm); its seams (cut-outs) become body, so the arm vanishes into it.
 PATCHES = {
-    "master_sloth": [("fill", None, 56, 56, 72, 70, (0, 4, 5, 6), 1)],
+    "master_sloth": [("fill", None, 56, 56, 72, 70, (0, 4, 5, 6), 1),          # (the sloth sits further right
+                     ("fill", [1], 43, 56, 53, 73, (0, 4, 5, 6), 1)],            # in its second pose)
     # the chameleon's last frame (the bend): its eye white with a dark pupil, as at the perch, not orange
     "pluck_chameleon": [("fill", [3], 41, 34, 55, 48, (5,), 4), ("fill", [3], 47, 39, 52, 44, (0, 4, 5), 3)],
 }
