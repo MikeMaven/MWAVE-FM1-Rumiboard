@@ -17,7 +17,7 @@ Each entry is a target sound and the synthesis approach planned for it.
 
 | # | Sound | Character | Approach |
 |---|-------|-----------|----------|
-| 1 | **Sub bass** | Clean sine sub; optional "bite" | Sine (+ optional octave-up triangle). Bite = soft saturation / gentle wavefold mixed in, plus a short filtered-pulse transient. Mono, legato glide. |
+| 1 | **Sub bass** | Clean, round sine sub with a **soft attack** (no click); optional "bite" | Sine (+ optional octave-up triangle). The amp attack eases in over ~15–30 ms by default (the reference: a clean Massive-style sub with the attack nudged a little slower), with a touch of harmonic warmth. Bite = soft saturation / gentle wavefold mixed in, plus a short filtered-pulse transient, off by default. Mono, legato glide. |
 | 2 | **Sine family** (harmony/melody) | Soft, round, chill | 2-operator FM with a low modulation index (sine to soft bell or electric-piano tones), lightly detuned sine pairs, slow chorus. |
 | 3 | **Chillhop pluck / bendy lead** | Plucky, rubbery, expressive | Sine or triangle with a fast pitch envelope (drops into the note), portamento, wide bend range, delayed vibrato, and a short lowpass envelope for the pluck. Optional Karplus-Strong string pluck. |
 | 4 | **Felted upright piano** | Muffled, intimate, hammer-soft | Short multi-zone samples (ADPCM) with a strong lowpass and soft attack. The "felt" comes from filtering, a quieter hammer transient and slight detune. Fallback: a modal/physical piano model. |
