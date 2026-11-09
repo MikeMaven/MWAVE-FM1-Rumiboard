@@ -3,9 +3,10 @@
 /* Rumiboard's creatures: a sound's living picture on the play page (ui_play.c), drawn from the concept sheets.
  * tools/gen_creatures.py turns each sheet (docs/creatures/refs/, the jpgs) into four 120 x 88 px poses in colour roles
  * (build/gen/creature_sprites.h, in the resource region): the firmware plays the poses to the music and moves the
- * picture a little (a bob, a lunge, a jump), so the art is the artist's and the motion is the sound's. Colours are
- * roles: the body the track's colour (T_THEME), the accent its companion shade (T_KNOB(1)), dark the text colour,
- * light and cut-outs the background. The blob (CR_BLOB), drawn from shapes, stands in for sounds without a sheet.
+ * picture a little (a bob, a lunge, a jump), so the art is the artist's and the motion is the sound's. Each creature
+ * keeps its sheet's own colours (CR_SPR_COLS: body, accent, a second accent, dark; cut-outs and light the
+ * background), as designed; the track's colour stays on the chrome around it. In the tests' GRAY palette they are
+ * drawn as greys. The blob (CR_BLOB), drawn from shapes in the track's colour, stands in for sounds without a sheet.
  *
  * creature_of says which creature a sound gets, creature_step moves it (once per CR_STEP_MS on the clock, from the
  * ISR's per-track state: a forced redraw shows the same frame), creature_draw_canvas draws it, creature_sig says when
@@ -42,6 +43,7 @@ static struct {
     uint8_t act;                            /* steps since the onset (255: none in a while) */
     uint8_t rel;                            /* steps since the sound ended (255: long ago) */
     uint8_t phase, lane, held, rising;      /* a step counter; the last drum lane hit; notes held; the envelope rising */
+    uint8_t peak;                           /* the envelope's recent peak (m_env >> 7), falling slowly: the cloud's scale */
     uint32_t ms;                            /* fm1_ms at the last step */
 } cr;
 static uint8_t cr_force;                    /* tests, the emulator: a creature to show regardless of the sound (0: none) */
@@ -86,6 +88,7 @@ static void creature_step(const track_t *t, int held)
     }
     if (onset) { cr.act = 0; cr.rel = 255; cr.idle = 0; }
     cr.rising = (uint8_t)(env > cr.env + 200);
+    if ((env >> 7) > cr.peak) cr.peak = (uint8_t)(env >> 7);
     sounding = drum ? (cr.act < 10u) : (held || env > 32767 / 8);
     cr.held = (uint8_t)sounding;
     cr.env = env;
@@ -97,6 +100,7 @@ static void creature_step(const track_t *t, int held)
         cr.v = (int16_t)clamp(cr.v + a, -300, 300);
         cr.p = (int16_t)clamp(cr.p + cr.v, -128, 200);
         cr.phase++;
+        if (cr.peak > 8u && !(cr.phase & 15u)) cr.peak--;   /* (the peak forgets slowly: a quieter sound still blooms) */
         if (cr.act < 255u) cr.act++;
         if (!sounding && cr.rel < 255u) cr.rel++;
         if (sounding) cr.rel = 0;
@@ -112,10 +116,17 @@ static uint32_t creature_pose(uint32_t kind)
 {
     uint32_t a = cr.act, r = cr.rel;
     switch (kind) {
-    case CR_CLOUD:                                      /* the envelope's course */
-        if (cr.env > 26000) return 2;
-        if (cr.env < 6000) return cr.rel < 30u && cr.act != 255u ? 3 : 0;
+    case CR_CLOUD: {                                    /* the envelope's course, against its recent peak: churning as
+                                                         * it rises, full bloom near the top, dissipating as it falls */
+        int32_t e = cr.env >> 7, pk = cr.peak < 16u ? 16 : cr.peak;
+        if (e * 10 >= pk * 7) return 2;
+        if (e * 10 < pk * 2) return r < 40u && cr.act != 255u ? 3 : 0;
         return cr.rising || a < 12u ? 1 : 3;
+    }
+    case CR_CHAMELEON:                                  /* (its fourth pose faces the other way: not used) */
+        if (a < 4u) return 1;
+        if (cr.held) return 2;
+        return 0;
     case CR_OCTOPUS:                                    /* the lanes */
         if (a < 6u) return cr.lane == 3u || cr.lane == 4u ? 2 : 1;
         return (cr.phase / 16u) & 1u ? 3 : 0;
@@ -136,7 +147,7 @@ static uint32_t creature_sig(void)
 {
     uint32_t s = (uint32_t)(cr.p + 256) * 7u + cr.key * 131u + cr.trk + (cr.vel >= 96u && cr.env > 32767 / 4) * 7919u +
                  (cr.act < 16u ? cr.act : 16u) * 263u + (cr.rel < 16u ? cr.rel : 16u) * 613u + cr.lane * 17u + cr.held * 5u +
-                 (uint32_t)(cr.env >> 10) * 37u + cr.rising * 3u;
+                 (uint32_t)(cr.env >> 10) * 37u + cr.rising * 3u + cr.peak * 11u;
     if (cr.idle > 20u || cr.act < 16u)
         s += cr.phase * 104729u;                        /* (a bob, a jump, the sway, the record) */
     return s;
@@ -199,9 +210,17 @@ static void creature_draw_canvas(uint32_t kind, int32_t w, int32_t h)
     if (kind < CR_FISH || kind > CR_SLOTH)
         return;
     pose = creature_pose(kind);
+    for (i = 0; i < 8u; i++) {                          /* the sheet's colours; cut-outs and light: the background */
+        uint16_t c = CR_SPR_COLS[kind - CR_FISH][i];
+        cols[i] = c ? c : T_BG;
+#ifdef UI_TEST_PALETTE
+        if (c && ux.pal == UI_GRAY_INDEX) {             /* (the tests' GRAY palette: every pixel a grey) */
+            uint32_t l = ux_luma(c) >> 3;
+            cols[i] = (uint16_t)((l << 11) | (l << 6) | l);
+        }
+#endif
+    }
     i = (kind - CR_FISH) * CR_SPR_POSES + pose;
-    cols[0] = T_BG; cols[1] = T_THEME; cols[2] = T_KNOB(1); cols[3] = T_TEXT; cols[4] = T_BG;
-    cols[5] = ux_mix(T_BG, T_THEME, 50); cols[6] = ux_mix(T_BG, T_KNOB(1), 50); cols[7] = ux_mix(T_THEME, T_TEXT, 50);
     if (cr.idle > 20u)                                  /* at rest: a slow bob */
         dy = cr_sway(kind == CR_CLOUD || kind == CR_AXOLOTL ? 3 : 2);
     if (cr.act < 12u) {                                 /* the note's motion: a lunge, a jump, a hop */

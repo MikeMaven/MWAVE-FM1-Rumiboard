@@ -11,12 +11,13 @@ pose's bounding box is scaled to fit the creature's canvas (120 x 88 by default)
 device recolours a sprite with the palette (body = the track's colour, accent = its companion shade, dark = the text
 colour, light = a light detail, 0 = transparent background):
 
-  0 bg (transparent)   1 body   2 accent   3 dark   4 light   5 body+bg edge   6 accent+bg edge   7 body+dark edge
+  0 bg (transparent)   1 body   2 accent   3 dark   4 light   5 second accent   (6, 7 unused)
 
-The roles are classified by nearest colour against the sheet's own body and accent (the two most frequent non-
-background colours, by hue), dark (near black / very dark) and light (near white). Output: one PNG preview per
-creature (docs/creatures/sprites/<name>.png: the four poses in the sheet's colours, 4x) and a role-index sheet
-(<name>.roles.png, greyscale indices, 1x) the firmware generator reads. Run from the repository root.
+The roles are classified by nearest colour against the sheet's own colours: body, accent and a second accent (the
+three most frequent non-background colour clusters, shades merged), dark (near black) and light (near white). The
+sheet's colours travel with the sprite (the firmware draws each creature in its own colours, as designed; the
+track's colour stays on the chrome). Output: one PNG preview per creature (docs/creatures/sprites/<name>.png, 4x),
+a role-index sheet (<name>.roles.png) and, with --header, the firmware's table. Run from the repository root.
 """
 import argparse
 import colorsys
@@ -27,8 +28,11 @@ from PIL import Image
 
 SHEETS = ["bass_anglerfish", "stab_bulldog", "pluck_chameleon", "pad_cloud", "drums_octopus", "piano_hedgehog",
           "keys_axolotl", "master_sloth"]
-ROLE_RGB = {0: (234, 232, 226), 1: (166, 16, 32), 2: (176, 122, 0), 3: (26, 26, 30), 4: (250, 248, 244),
-            5: (200, 124, 129), 6: (205, 177, 113), 7: (96, 21, 31)}       # the preview's colours (RUMI, red track)
+BG_RGB, DARK_RGB = (234, 232, 226), (26, 26, 30)       # the preview's background (RUMI) and the dark role
+
+
+def to565(c):
+    return ((c[0] >> 3) << 11) | ((c[1] >> 2) << 5) | (c[2] >> 3)
 
 
 def dist(a, b):
@@ -119,44 +123,53 @@ def find_panels(im, bg):
 
 
 def sheet_colours(im, bg, boxes):
-    """body and accent: the two most frequent non-background colour clusters (6 clusters, far from bg, dark, light)"""
-    crop = im.crop((boxes[0][0], boxes[0][1], boxes[-1][2], boxes[-1][3])).resize((300, 120), Image.BOX)
-    q = crop.quantize(colors=12, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
-    pal = q.getpalette()[:36]
-    counts = sorted(q.getcolors(), reverse=True)
-    cands = []
-    for n, i in counts:
-        c = tuple(pal[3 * i:3 * i + 3])
-        if is_bg(c, bg, 40) or max(c) < 70 or min(c) > 225:
+    """body, accent, second accent: the three most frequent non-background colour clusters (shades merged; not bg,
+    dark or light); a sheet with fewer repeats its last"""
+    # the figures' own pixels (no background, dark or light), binned to 16 levels a channel, the bins ranked
+    crop = im.crop((boxes[0][0], boxes[0][1], boxes[-1][2], boxes[-1][3]))
+    crop.thumbnail((900, 400), Image.NEAREST)
+    bins = {}
+    for p in crop.getdata():
+        if is_bg(p, bg, 40) or max(p) < 70 or min(p) > 225:
             continue
-        for k, (m, d) in enumerate(cands):             # a shade of a colour already seen: the same colour
-            if dist(c, d) < 45 * 45:
+        k = (p[0] >> 4, p[1] >> 4, p[2] >> 4)
+        n, s = bins.get(k, (0, (0, 0, 0)))
+        bins[k] = (n + 1, (s[0] + p[0], s[1] + p[1], s[2] + p[2]))
+    ranked = sorted(((n, tuple(v // n for v in s)) for n, s in bins.values()), reverse=True)
+    cands = []
+    sat = lambda c: max(c) - min(c)
+    for n, c in ranked:                                   # a shade of a colour already seen: the same colour (near it,
+        for k, (m, d) in enumerate(cands):                # and as saturated: a dusky indigo is not a shade of grey)
+            if dist(c, d) < 48 * 48 and abs(sat(c) - sat(d)) < 20:
                 cands[k] = (m + n, d)
                 break
         else:
             cands.append((n, c))
     cands.sort(reverse=True)
-    body = cands[0][1]
-    accent = None
+    total = sum(n for n, _ in cands)
+    cands = [(n, c) for n, c in cands if n > total * 0.015]   # (a colour of at least 1.5 % of the figures)
+    apart = lambda c, k: dist(c, k) > 45 * 45 or abs(sat(c) - sat(k)) > 20   # (a different colour, or a different chroma)
+    cols = [cands[0][1]]
     for n, c in cands[1:]:                                # the accent: the next cluster clearly apart from the body
-        if dist(c, body) > 45 * 45:
-            accent = c
+        if apart(c, cols[0]):
+            cols.append(c)
             break
-    return body, accent or body
+    # the second accent: a saturated colour if the sheet has one left (a grey sloth keeps its indigo record), else
+    # the next cluster apart from both
+    rest = [c for n, c in cands if all(apart(c, k) for k in cols)]
+    sat = [c for c in rest if max(c) - min(c) > 32]
+    if len(cols) < 2: cols.append(cols[0])
+    cols.append((sat or rest or [cols[-1]])[0])
+    return cols
 
 
-def classify(p, bg, body, accent):
+def classify(p, bg, cols):
     if is_bg(p, bg, 30): return 0
     if max(p) < 80: return 3
     if min(p) > 225: return 4
-    cands = [(dist(p, body), 1), (dist(p, accent), 2), (dist(p, bg), 0), (dist(p, (20, 20, 20)), 3), (dist(p, (245, 245, 245)), 4)]
-    d, r = min(cands)
-    # an edge pixel: between two roles (far from both)
-    db, da = dist(p, body), dist(p, bg)
-    if r in (1, 0) and db > 40 * 40 and da > 40 * 40 and dist(p, tuple((a + b) // 2 for a, b in zip(body, bg))) < 40 * 40: return 5
-    dac = dist(p, accent)
-    if r in (2, 0) and dac > 40 * 40 and da > 40 * 40 and dist(p, tuple((a + b) // 2 for a, b in zip(accent, bg))) < 40 * 40: return 6
-    return r
+    cands = [(dist(p, cols[0]), 1), (dist(p, cols[1]), 2), (dist(p, cols[2]), 5), (dist(p, bg), 0),
+             (dist(p, (20, 20, 20)), 3), (dist(p, (245, 245, 245)), 4)]
+    return min(cands)[1]
 
 
 def rle(frame):
@@ -204,16 +217,17 @@ def main():
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     rows = []
-    blob, offs = bytearray(), []
+    blob, offs, palettes = bytearray(), [], []
     for name in SHEETS:
         im = Image.open(Path(a.refs) / f"{name}.jpg").convert("RGB")
         bg = im.getpixel((8, 8))
         boxes = find_panels(im, bg)
         if len(boxes) < 4:
             print(f"{name}: {len(boxes)} poses found (wanted 4)")
-        body, accent = sheet_colours(im, bg, boxes)
+        cols = sheet_colours(im, bg, boxes)
+        role_rgb = {0: BG_RGB, 1: cols[0], 2: cols[1], 3: DARK_RGB, 4: BG_RGB, 5: cols[2], 6: BG_RGB, 7: BG_RGB}
         roles = Image.new("L", (a.w * 4, a.h), 0)
-        prev = Image.new("RGB", (a.w * 4, a.h), ROLE_RGB[0])
+        prev = Image.new("RGB", (a.w * 4, a.h), BG_RGB)
         for k, (x0, y0, x1, y1) in enumerate(boxes[:4]):
             pose = im.crop((x0, y0, x1, y1))
             pose.thumbnail((a.w - 4, a.h - 4), Image.BOX)       # fit, a 2 px margin
@@ -221,15 +235,14 @@ def main():
             pp = pose.load()
             for y in range(pose.height):
                 for x in range(pose.width):
-                    r = classify(pp[x, y], bg, body, accent)
+                    r = classify(pp[x, y], bg, cols)
                     roles.putpixel((ox + x, oy + y), r)
-                    prev.putpixel((ox + x, oy + y), ROLE_RGB[r])
         roles = despeckle(roles)
-        prev = Image.new("RGB", roles.size, ROLE_RGB[0])
         rp = roles.load()
         for y in range(roles.height):
             for x in range(roles.width):
-                prev.putpixel((x, y), ROLE_RGB[rp[x, y]])
+                prev.putpixel((x, y), role_rgb[rp[x, y]])
+        palettes.append([to565(role_rgb[r]) for r in range(8)])
         roles.save(Path(a.out) / f"{name}.roles.png")
         frames = [rle(roles.crop((k * a.w, 0, (k + 1) * a.w, a.h))) for k in range(4)]
         for fr in frames:
@@ -238,8 +251,8 @@ def main():
         print(f"  compressed: {[len(f) for f in frames]} B, {sum(len(f) for f in frames)} B for the four poses")
         prev.resize((prev.width * 4, prev.height * 4), Image.NEAREST).save(Path(a.out) / f"{name}.png")
         rows.append(prev)
-        print(f"{name}: {len(boxes)} poses, body {body}, accent {accent}, boxes {[(b[2]-b[0], b[3]-b[1]) for b in boxes]}")
-    sheet = Image.new("RGB", (a.w * 4, a.h * len(rows)), ROLE_RGB[0])
+        print(f"{name}: {len(boxes)} poses, colours {cols}, boxes {[(b[2]-b[0], b[3]-b[1]) for b in boxes]}")
+    sheet = Image.new("RGB", (a.w * 4, a.h * len(rows)), BG_RGB)
     for i, r in enumerate(rows):
         sheet.paste(r, (0, i * a.h))
     sheet.resize((sheet.width * 3, sheet.height * 3), Image.NEAREST).save(a.preview)
@@ -249,10 +262,12 @@ def main():
         lines = ["/* generated by tools/gen_creatures.py from docs/creatures/refs/ (the jpgs): the creatures' sprites (ui_creature.c).",
                  f" * {a.w} x {a.h} px frames, four poses a creature, in the order of CR_FISH .. CR_SLOTH; runs of a colour role:",
                  " * b = role << 5 | (n - 1) for n <= 31, else role << 5 | 31 then n - 32. Roles: 0 bg (transparent), 1 body, 2 accent,",
-                 " * 3 dark, 4 light, 5 body+bg edge, 6 accent+bg edge, 7 body+dark edge. In the resource region (MELODEE_RES). */",
+                 " * 3 dark, 4 light, 5 second accent. CR_SPR_COLS: each creature's role colours (RGB565) from its sheet; roles 0 and 4",
+                 " * are 0 there: the background. In the resource region (MELODEE_RES). */",
                  "#pragma once", "#include <stdint.h>",
                  f"#define CR_SPR_W {a.w}", f"#define CR_SPR_H {a.h}", f"#define CR_SPR_CREATURES {len(SHEETS)}", "#define CR_SPR_POSES 4",
                  "static const uint16_t CR_SPR_OFF[CR_SPR_CREATURES * CR_SPR_POSES + 1] = {" + ", ".join(str(o) for o in offs) + "};",
+                 "static const uint16_t CR_SPR_COLS[CR_SPR_CREATURES][8] = {" + ", ".join("{" + ", ".join(f"0x{c:04x}" if r not in (0, 4, 6, 7) else "0" for r, c in enumerate(p)) + "}" for p in palettes) + "};",
                  f"static const uint8_t MELODEE_RES CR_SPR[{len(blob)}] = {{"]
         for i in range(0, len(blob), 24):
             lines.append("    " + ", ".join(f"0x{b:02x}" for b in blob[i:i + 24]) + ",")

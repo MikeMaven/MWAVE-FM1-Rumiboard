@@ -9,18 +9,20 @@ it is drawn on the device.
 
 - **Size:** 64 px tall at rest inside a 120 × 88 px canvas (the play page); 22 px tall in the band.
   Features at least 3 px at 64 px: eyes are 9 px dots, teeth 6 px.
-- **Colours are roles**, so every creature works in all ten palettes and the greyscale test:
-  body = the track's colour (`T_THEME`); accent (gloves, fins, record, hammer) = the track's first
-  companion shade (`T_KNOB(1)`, the colour turned 32° round the hue circle); cut-outs (eyes, mouths,
-  seams) = the background (`T_BG`); a dark detail (pupils, a mouth's inside) = the text colour. No
-  gradients, outlines or shading.
-- **Built from parts, moved by code** (`ui_creature.c`): discs, capsules, rounded rectangles and
-  column-by-column spans for ellipses, fins and arcs. A creature's state is a few bytes (RAM has ~1 KB
-  to spare); its motion is a small spring or a short timed action, stepped on the clock every 30 ms.
+- **The art is the sheet's.** `tools/gen_creatures.py` cuts the four poses out of each sheet, scales them
+  to the canvas and stores them as run-length pixel art in colour roles: body, accent, a second accent
+  (the sheet's three most frequent colours), dark, and light / cut-outs (the background). Each creature
+  keeps **its own colours** from the sheet (`CR_SPR_COLS`), as designed; the track's colour stays on the
+  chrome around it. In the tests' greyscale palette the colours are drawn as greys. All 32 poses: ~25 KB,
+  in the flash resource region (read in place, no RAM).
+- **Posed by code** (`ui_creature.c`): a note shows the attack pose, the sustain pose while the sound
+  holds, the release pose, then rest; the cloud follows its envelope (against its recent peak), the
+  octopus the drum lanes, the sloth wobbles in turn; a bob, lunge or jump is added in code. A creature's
+  state is ~20 bytes (RAM has ~1 KB to spare), stepped on the clock every 30 ms.
 - **What drives it:** the track's latest note (pitch, velocity), its amp envelope (`m_env`), whether
-  notes are held (`live_held`), the knobs' values where the sheet says so (filter, decay), and the
-  tempo for idle sway.
-- Drawn frames (sprites) are a last resort: flash has ~20 KB spare.
+  notes are held (`live_held`), the drum lanes' hits, the clock for idle sway.
+- Better sheets make better creatures: flat colours, strong silhouettes, poses that read at 64 px; a
+  pose that faces the other way (the chameleon's fourth) is not used.
 
 ## The roster
 
