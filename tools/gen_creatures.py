@@ -30,13 +30,14 @@ from PIL import Image
 SHEETS = ["bass_anglerfish", "stab_bulldog", "pluck_chameleon", "pad_cloud", "drums_octopus", "piano_hedgehog",
           "keys_axolotl", "master_sloth"]
 BG_RGB, DARK_RGB = (234, 232, 226), (26, 26, 30)       # the preview's background (RUMI) and the dark role
-# Corrections to the sheets, on the role map (canvas px): ("fill", poses or None for all, x0, y0, x1, y1, roles, role):
+# Corrections to the sheets, on the role map (a frame's own px, 0 .. 119 x 0 .. 87): ("fill", poses or None for all,
+# x0, y0, x1, y1, roles, role):
 # pixels of the given roles in the box become the role. The sloth: the paw tucked under its body left of the face
 # is a third arm (the one reaching up is that arm); its seams (cut-outs) become body, so the arm vanishes into it.
 PATCHES = {
     "master_sloth": [("fill", None, 56, 56, 72, 70, (0, 4, 5, 6), 1)],
     # the chameleon's last frame (the bend): its eye white with a dark pupil, as at the perch, not orange
-    "pluck_chameleon": [("fill", [3], 401, 34, 415, 48, (5,), 4), ("fill", [3], 407, 39, 412, 44, (0, 4, 5), 3)],
+    "pluck_chameleon": [("fill", [3], 41, 34, 55, 48, (5,), 4), ("fill", [3], 47, 39, 52, 44, (0, 4, 5), 3)],
 }
 # Single frames that replace a sheet's pose (0 .. 3): an image of one figure, possibly inside a mock of the screen
 # (docs/creatures/refs/frames/), or (path, (fx0, fy0, fx1, fy1)): that part of the image, as fractions (an image

@@ -24,9 +24,11 @@
  *   AXOLOTL    float / initiate flip / flip & trail / settle  a note: the flip, trailing while it sounds, settle
  *   SLOTH      lazy wobble / adjust weight / needle skip / return    idle: wobble and adjust in turn; a note (a peak,
  *                                                             later): the skip, then return
- * Onset: the amp envelope of the track's latest voice (mod.c m_env, Q15) rising by a sixth of full scale between
- * two steps, or the latest key changing while something sounds; a DRUM track's onsets are its lanes' hits
- * (ui_stage.c stage.hit_t). cr_force (tests, the emulator's picker) shows any creature regardless of the sound. */
+ * The sound's level: the track's output peak since the last step (mix.c t->peak, Q15, read and cleared here every
+ * step as the Mixer's meter does: a 30 ms peak meter), or the amp envelope of its latest voice (mod.c m_env) when
+ * that is higher (it is kept only while the modulation matrix runs). Onset: the level rising by a sixth of full
+ * scale between two steps, or the latest key changing while something sounds; a DRUM track's onsets are its lanes'
+ * hits (ui_stage.c stage.hit_t). cr_force (tests, the emulator's picker) shows any creature regardless of the sound. */
 #ifndef MELODEE_RES
 #define MELODEE_RES                                     /* (host builds: the sprites in the program) */
 #endif
@@ -112,10 +114,12 @@ static uint32_t creature_of_entry(uint32_t src, uint32_t k)
 }
 
 /* one step on the clock: the counters, the blob's spring, and a note's onset */
-static void creature_step(const track_t *t, int held)
+static void creature_step(track_t *t, int held)
 {
     uint32_t sel = song.sel % NTRK + 1u, steps = (fm1_ms - cr.ms) / CR_STEP_MS, l;
-    int32_t env = t->m_env, target = held ? 40 : 0, onset = 0, drum = drum_track(t), sounding;
+    int32_t pk = t->peak, env, target = held ? 40 : 0, onset = 0, drum = drum_track(t), sounding;
+    t->peak = 0;                                        /* (the meter restarts: the level is the peak of this step) */
+    env = pk > t->m_env ? pk : t->m_env;
     if (cr.trk != sel) {                                /* another track: start at rest (a note already sounding there
                                                          * counts as an onset: a move to say hello) */
         memset(&cr, 0, sizeof cr);
