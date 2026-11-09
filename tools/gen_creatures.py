@@ -38,7 +38,8 @@ PATCHES = {
     "master_sloth": [("fill", None, 56, 56, 72, 70, (0, 4, 5, 6), 1),          # (the sloth sits further right
                      ("fill", [1], 43, 56, 53, 73, (0, 4, 5, 6), 1)],            # in its second pose)
     # the chameleon's last frame (the bend): its eye white with a dark pupil, as at the perch, not orange
-    "pluck_chameleon": [("fill", [3], 41, 34, 55, 48, (5,), 4), ("fill", [3], 47, 39, 52, 44, (0, 4, 5), 3)],
+    "pluck_chameleon": [("fill", [3], 41, 34, 55, 48, (5,), 4), ("fill", [3], 47, 39, 52, 44, (0, 4, 5), 3),
+                        ("fill", [2], 49, 42, 60, 53, (5,), 4), ("fill", [2], 52, 45, 57, 50, (0, 4, 5), 3)],   # the reach's too
 }
 # Single frames that replace a sheet's pose (0 .. 3): an image of one figure, possibly inside a mock of the screen
 # (docs/creatures/refs/frames/), or (path, (fx0, fy0, fx1, fy1)): that part of the image, as fractions (an image
