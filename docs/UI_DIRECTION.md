@@ -95,6 +95,8 @@ design that fills the families.
    Melodee/Felucca credits. (Still Melodee: the USB / Bluetooth / MIDI device names and the
    package identity; they change with the release setup.)
 3. ✅ Pad-style rows on Home and the Mixer (`gfx.c` `pad_fill` / `pad_rrect`); other lists next.
-4. One living visual (the sub-bass blob) as the pattern for the others.
+4. ✅ The first living visual: the blob for BASS sounds in Home's band (`firmware/src/ui_creature.c`,
+   the pattern for the others: `creature_of`, `creature_step`, `creature_draw`). Next creatures follow
+   their engines.
 5. RUMI / 1984 sound families in the browser, the palette following the chosen sound.
 6. Mascot and transitions.

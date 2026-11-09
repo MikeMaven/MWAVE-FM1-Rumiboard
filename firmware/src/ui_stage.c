@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Kerem Kilic (Ellic Studio) */
+ * Copyright (C) 2026 Kerem Kilic (Ellic Studio)
+ * Portions Copyright (C) 2026 Mike Maven and Rumiboard contributors (pads, creatures) */
 /* Melodee's Stage (HOME), in the large type (docs/design/README.md "Large type": C, rows).
  * Stage: the header (where you are: the engine, a kit's name); a full-width row per track in use, sharing rows
  * 32 .. 205 (four 42 px, three 56, two 86, one 174): the track's numeral filled in its colour, the sound (20 px; two
@@ -102,6 +103,14 @@ static void stage_columns(void)
 }
 
 /* ------------------------------------------------------- the band --- */
+#include "ui_creature.c"                                /* Rumiboard: a sound's living picture in the band */
+/* the category of the selected track's loaded sound (browse.c) */
+static uint32_t stage_sel_cat(void)
+{
+    uint32_t src, kk;
+    cur_entry(&src, &kk);
+    return entry_cat(src, kk) % CAT_N;
+}
 /* the output's waveform over w px from x 8, smooth: triggered on a rising zero crossing, auto-scaled, each sample
  * the mean of three, 2 px anti-aliased (gfx.c cv_vspan_aa); rows top .. top + h */
 static void stage_wave(uint16_t c, int32_t top, int32_t h)
@@ -275,15 +284,23 @@ static void stage_band(void)
         for (i = 0; i < 4u; i++) held |= live_held[sel][i] != 0u;
         fm1_irq_on();
     }
-    cv_over = 1;                                        /* (blended over what is there) */
-    if (drum)
+    if (drum) {
+        cv_over = 1;                                    /* (blended over what is there) */
         stage_hits();
-    else if (!stage_notes(228, ST_BAND_H / 2)) {        /* nothing played yet: the waveform alone */
-        cv_over = 0;
-        stage_wave(ux_mix(T_BG, T_THEME, 45), 1, ST_BAND_H - 2);
+    } else {
+        uint32_t kind = creature_of(stage_sel_cat());   /* Rumiboard: the sound's creature at the right .. */
+        int32_t x1 = 228;
+        if (kind) {
+            creature_step(TSEL, held);
+            x1 = creature_draw(kind, 232, ST_BAND_H - 2);
+        }
+        cv_over = 1;
+        if (!stage_notes(x1, ST_BAND_H / 2) && !kind) {   /* .. nothing played yet, no creature: the waveform alone */
+            cv_over = 0;
+            stage_wave(ux_mix(T_BG, T_THEME, 45), 1, ST_BAND_H - 2);
+        }
     }
     cv_over = 0;
-    (void)held;
     cv_blit(0, ST_BAND_Y);
 }
 
