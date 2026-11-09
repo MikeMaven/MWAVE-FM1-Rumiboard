@@ -192,9 +192,12 @@ static uint32_t creature_pose(uint32_t kind)
         if (e * 10 < pk * 2) return r < 16u && cr.act != 255u ? 3 : 0;   /* (dissipating half a second, then rest) */
         return cr.rising || a < 12u ? 1 : 3;
     }
-    case CR_OCTOPUS:                                    /* the lanes */
-        if (a < 6u) return cr.lane == 3u || cr.lane == 4u ? 2 : 1;
-        return (cr.phase / 16u) & 1u ? 3 : 0;
+    case CR_OCTOPUS:                                    /* a hit: the slam (hats: the twiddle) for 0.3 s, a new hit
+                                                         * restarting it; then neutral; a second without a hit: a slow
+                                                         * sway between the two swings */
+        if (a < 10u) return cr.lane == 3u || cr.lane == 4u ? 2 : 1;
+        if (a < 36u) return 0;
+        return (cr.phase / 32u) & 1u ? 3 : 0;
     case CR_SLOTH:                                      /* lazy in turn; a note: the skip */
         if (a < 6u) return 2;
         if (a < 16u) return 3;
