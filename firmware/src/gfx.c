@@ -1312,6 +1312,29 @@ static void draw_text_box(uint32_t x, uint32_t y, uint32_t w, const aafont_t *f,
 {
     draw_text_line(x, y, w, f, s, c, T_BG, align);
 }
+/* Rumiboard: a run-length sprite (tools/gen_creatures.py: b = role << 5 | (n - 1), n <= 31, else role << 5 | 31 then
+ * n - 32; row-major over w x h) at x0, y0 on the canvas, each role in its colour; role 0 is transparent. Clipped to
+ * the canvas band. */
+static void cv_sprite(int32_t x0, int32_t y0, const uint8_t *s, uint32_t len, int32_t w, int32_t h, const uint16_t *cols)
+{
+    uint32_t i = 0, p = 0, total = (uint32_t)(w * h);
+    while (i < len && p < total) {
+        uint32_t role = s[i] >> 5, n = (s[i] & 31u) + 1u;
+        i++;
+        if (n == 32u && i < len) n = 32u + s[i++];
+        if (role) {
+            uint16_t c = swap16(cols[role]);
+            uint32_t k;
+            for (k = 0; k < n && p + k < total; k++) {
+                int32_t x = x0 + (int32_t)((p + k) % (uint32_t)w), y = y0 + (int32_t)((p + k) / (uint32_t)w) + cv_oy;
+                if ((uint32_t)x < cv_w && y >= (int32_t)cv_top && (uint32_t)y < cv_top + cv_rows)
+                    cv_px[((uint32_t)y - cv_top) * cv_w + (uint32_t)x] = c;
+            }
+        }
+        p += n;
+    }
+}
+
 /* Rumiboard pads (Home's rows, the Mixer's strips): the selected row a lit pad (its colour, outlined in it, pressed:
  * no lip), the others rubber pads (the surface with a hint of the colour, raised on a darker 3 px lip). pad_fill: the
  * fill the row's contents draw on; pad_rrect: the pad at 0,0 on T_BG, w x h, edge the lit pad's outline */

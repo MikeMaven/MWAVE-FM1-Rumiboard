@@ -31,7 +31,7 @@ static void play_creature(uint32_t kind)
         play.cr = sig;
         for (band = 0; band < (uint32_t)PL_CR_H; band += CV_MAX / (uint32_t)PL_CR_W) {
             cv_begin_band(PL_CR_W, PL_CR_H, T_BG, band);
-            creature_draw_at(kind, PL_CR_W / 2, PL_CR_H - 4, creature_size(kind));
+            creature_draw_canvas(kind, PL_CR_W, PL_CR_H);
             cv_blit_band(PL_CR_X, PL_CR_Y);
         }
         return;

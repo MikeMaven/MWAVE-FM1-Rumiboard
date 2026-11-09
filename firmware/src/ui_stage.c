@@ -288,8 +288,8 @@ static void stage_band(void)
         cv_over = 1;                                    /* (blended over what is there) */
         stage_hits();
     } else {
-        uint32_t kind = ui.home_pg == HOME_PG_PLAY ? CR_NONE : creature_of(stage_sel_cat());   /* Rumiboard: the
-                                                         * sound's creature at the right (the play page has it large) .. */
+        uint32_t kind = CR_NONE;                        /* (Rumiboard: the creatures live on the play page; here the
+                                                         * notes and the waveform) */
         int32_t x1 = 228;
         if (kind) {
             creature_step(TSEL, held);
