@@ -39,7 +39,8 @@ PATCHES = {
 # Single frames that replace a sheet's pose (0 .. 3): an image of one figure, possibly inside a mock of the screen
 # (docs/creatures/refs/frames/), or (path, (fx0, fy0, fx1, fy1)): that part of the image, as fractions (an image
 # holding two mocks side by side: the left half, the right half). The figure is the largest connected piece whose
-# box spans less than 60 % of the (part of the) image's width (a drawn device frame is wider; text is small).
+# pixels are mostly the creature's colours (a drawn device frame and text are dark) and whose box spans less than
+# 90 % of the (part of the) image's width.
 FRAMES = {
     "bass_anglerfish": {1: "docs/creatures/refs/frames/bass_anglerfish_2.jpg"},
     "stab_bulldog": {1: ("docs/creatures/refs/frames/stab_bulldog_ab.jpg", (0, 0, 0.5, 1)),      # A: the squash
@@ -63,13 +64,17 @@ def frame_image(spec):
     return fim
 
 
-def find_figure(im, bg):
-    """one figure in an image: its box in the image's pixels"""
+def find_figure(im, bg, cols):
+    """one figure in an image (a mock of the screen round it, text, a drawn frame): the largest connected piece
+    that is mostly in the creature's colours and spans less than 90 % of the width (a drawn frame spans it all); its
+    box in the image's pixels"""
     w, h = im.size
     s = 4 if w > 800 else 1
     small = im.resize((w // s, h // s), Image.BOX) if s > 1 else im
     px = small.load()
-    comps = [c for c in components(px, 0, small.width, 0, small.height, bg) if (c[3] - c[1]) < small.width * 0.6]
+    is_fig = lambda p: any(dist(p, c) < 60 * 60 for c in cols)
+    comps = [c[:5] for c in components(px, 0, small.width, 0, small.height, bg, is_fig)
+             if (c[3] - c[1]) < small.width * 0.9 and c[0] * 2 > c[5]]
     comps.sort(reverse=True)
     n, bx0, by0, bx1, by1 = comps[0]
     fh, fw = by1 - by0, bx1 - bx0
@@ -94,19 +99,21 @@ def is_bg(p, bg, tol=28):
     return dist(p, bg) < tol * tol
 
 
-def components(px, x0, x1, y0, y1, bg):
-    """connected components (8-way) of non-background pixels in the box: [(count, bx0, by0, bx1, by1)]"""
+def components(px, x0, x1, y0, y1, bg, is_fig=None):
+    """connected components (8-way) of non-background pixels in the box: [(count, bx0, by0, bx1, by1)]; with is_fig,
+    count is the number of pixels is_fig accepts (the creature's colours), the sixth item the pixels in all"""
     seen = set()
     out = []
     for sy in range(y0, y1):
         for sx in range(x0, x1):
             if (sx, sy) in seen or is_bg(px[sx, sy], bg):
                 continue
-            stack, n, bx0, by0, bx1, by1 = [(sx, sy)], 0, sx, sy, sx, sy
+            stack, n, nf, bx0, by0, bx1, by1 = [(sx, sy)], 0, 0, sx, sy, sx, sy
             seen.add((sx, sy))
             while stack:
                 x, y = stack.pop()
                 n += 1
+                if is_fig and is_fig(px[x, y]): nf += 1
                 bx0, by0, bx1, by1 = min(bx0, x), min(by0, y), max(bx1, x), max(by1, y)
                 for dx in (-1, 0, 1):
                     for dy in (-1, 0, 1):
@@ -114,7 +121,7 @@ def components(px, x0, x1, y0, y1, bg):
                         if x0 <= nx < x1 and y0 <= ny < y1 and (nx, ny) not in seen and not is_bg(px[nx, ny], bg):
                             seen.add((nx, ny))
                             stack.append((nx, ny))
-            out.append((n, bx0, by0, bx1, by1))
+            out.append((nf, bx0, by0, bx1, by1, n) if is_fig else (n, bx0, by0, bx1, by1))
     return out
 
 
@@ -289,7 +296,7 @@ def main():
             if k in FRAMES.get(name, {}):              # a frame of its own replaces this pose
                 fim = frame_image(FRAMES[name][k])
                 fbg = fim.getpixel((8, 8))
-                pose = fim.crop(find_figure(fim, fbg))
+                pose = fim.crop(find_figure(fim, fbg, cols))
             pose.thumbnail((a.w - 4, a.h - 4), Image.BOX)       # fit, a 2 px margin
             ox, oy = k * a.w + (a.w - pose.width) // 2, a.h - 2 - pose.height   # standing on the canvas's floor
             pp = pose.load()
