@@ -10,7 +10,12 @@
 set -e
 cd "$(dirname "$0")/../.."
 IMG=rumiboard-build
+TC=tools/docker/cache/jieli-linux-toolchain.tar.xz          # (the toolchain, fetched here once: see the Dockerfile)
 if [ -n "$REBUILD" ] || ! docker image inspect "$IMG" >/dev/null 2>&1; then
+    if [ ! -s "$TC" ]; then
+        mkdir -p tools/docker/cache
+        curl -fL --retry 5 https://pkgman.jieliapp.com/s/linux-toolchain -o "$TC"
+    fi
     docker build --platform linux/amd64 -t "$IMG" -f tools/docker/Dockerfile .
 fi
 [ $# -gt 0 ] || set -- sh

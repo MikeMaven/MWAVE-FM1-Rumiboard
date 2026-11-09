@@ -26,11 +26,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install
 RUN python3 -m venv /opt/py && /opt/py/bin/pip install -q Pillow fonttools mido
 ENV PATH=/opt/py/bin:$PATH PYTHON=/opt/py/bin/python
 
-# The JieLi toolchain (tools/get_toolchain.sh installs it to ~/.jieli/toolchain; HOME is /root here)
-COPY tools/get_toolchain.sh /tmp/get_toolchain.sh
-# (JieLi's server drops connections now and then: a few tries)
-RUN for i in 1 2 3 4 5; do sh /tmp/get_toolchain.sh && break; echo "toolchain download failed, retrying ($i)"; sleep 10; done \
-    && test -d /root/.jieli/toolchain/pi32v2 && rm /tmp/get_toolchain.sh
+# The JieLi toolchain, downloaded by run.sh into tools/docker/cache/ (JieLi's server refuses the download from
+# inside an image build now and then; the host fetches it once), unpacked where tools/get_toolchain.sh would
+COPY tools/docker/cache/jieli-linux-toolchain.tar.xz /tmp/toolchain.tar.xz
+RUN mkdir -p /root/.jieli/toolchain && tar -xJ --strip-components=1 -C /root/.jieli/toolchain -f /tmp/toolchain.tar.xz \
+    && test -d /root/.jieli/toolchain/pi32v2 && rm /tmp/toolchain.tar.xz
 ENV JIELI_TOOLCHAIN=/root/.jieli/toolchain
 
 # The AC79 SDK: three files of it go into the package (BUILDING.md)
