@@ -74,9 +74,10 @@ static void creature_step(const track_t *t, int held)
         cr.act = cr.rel = 255;
         steps = 0;
     }
-    if (drum) {                                         /* a lane just hit (stage_panel_hits: 10 frames lit) */
+    if (drum) {                                         /* a lane just hit (stage_panel_hits: 10 frames lit, one less each
+                                                         * frame; this runs every other frame, so 10 or 9 is a new hit) */
         for (l = 0; l < NLANE; l++)
-            if (stage.hit_t[l] == 10u) { onset = 1; cr.lane = (uint8_t)l; }
+            if (stage.hit_t[l] >= 9u) { onset = 1; cr.lane = (uint8_t)l; }
         if (onset) cr.vel = 110;
     } else if (env - cr.env > 32767 / 6 || (t->m_key != cr.key && env > 32767 / 8)) {
         cr.vel = t->m_vel;
