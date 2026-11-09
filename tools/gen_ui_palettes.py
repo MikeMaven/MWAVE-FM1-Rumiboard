@@ -6,7 +6,7 @@
 
   gen_ui_palettes.py OUT.h [--report]
 
-Melodee's palettes: NIGHT (the default: warm ink), DAY (light) and CONTRAST (black and white). A palette is BG
+Rumiboard's default is RUMI (light chassis grey; DEFAULT below). Melodee's palettes: NIGHT (warm ink), DAY (light) and CONTRAST (black and white). A palette is BG
 (background), SURF (surface: cards, dialogs, menu rows), TEXT, ACCENT (the one active thing: hot knob, cursor,
 playhead) and four track colours: the selected track's is THEME (values, curves, gauges, selection), so the screen
 takes the colour of the track ALGORITHM picks (src/gfx.c palette_track). The firmware derives the rest with fixed
@@ -47,7 +47,14 @@ PALETTES = [
      ((150, 20, 102), (32, 64, 178), (0, 88, 90), (138, 54, 0))),
     ("LO-FI",    (32, 28, 26),    (48, 42, 38),    (236, 226, 208), (250, 244, 232),
      ((218, 140, 128), (214, 182, 104), (146, 184, 142), (142, 164, 206))),
+    # Rumiboard: RUMI (the default) is the FM-1's white-and-grey chassis: warm light grey, charcoal ink and four
+    # bold pad colours (red, cobalt, green, orange). DUSK is its charcoal night version with bright pads.
+    ("RUMI",     (234, 232, 226), (220, 217, 210), (26, 26, 30),    (18, 18, 22),
+     ((166, 16, 32), (20, 68, 170), (0, 88, 46), (128, 52, 0))),
+    ("DUSK",     (28, 28, 31),    (42, 42, 46),    (242, 240, 234), (255, 255, 255),
+     ((255, 120, 112), (96, 164, 255), (86, 214, 122), (255, 196, 56))),
 ]
+DEFAULT = "RUMI"                   # the palette a fresh device (and any unknown stored id) uses
 TEST_GRAY = ("GRAY", (14, 14, 14), (36, 36, 36), (204, 204, 204), (255, 255, 255),
              ((232, 232, 232), (220, 220, 220), (208, 208, 208), (244, 244, 244)))
 PAL_TAG = 96                       # stored id = PAL_TAG + index (ids below: earlier firmware, read as the default)
@@ -229,7 +236,7 @@ def main():
                "static const ui_pal_t UI_PALETTES[] = {"]
         out += [row(p) for p in PALETTES]
         out += ["#ifdef UI_TEST_PALETTE", row(TEST_GRAY), "#endif", "};",
-                f"#define UI_NPALETTES {len(PALETTES)}u", "#define UI_DEFAULT_INDEX 0u",
+                f"#define UI_NPALETTES {len(PALETTES)}u", f"#define UI_DEFAULT_INDEX {names.index(DEFAULT)}u",
                 f"#define UI_GRAY_INDEX {len(PALETTES)}u      /* (UI_TEST_PALETTE only) */",
                 f"#define UI_PAL_TAG {PAL_TAG}u          /* stored id = UI_PAL_TAG + index */"]
         out += [f"#define UI_{k}_PCT {v}" for k, v in PCT.items()] + [f"#define UI_RAISE_PCT {RAISE_PCT}   /* SURF -> TEXT */"]

@@ -79,10 +79,9 @@ Licensing: Felucca's application is GPL-3.0-only, its hardware layer (felucca-bs
 MPL-2.0 and its engines are MIT. Melodee is a GPL-3.0 derivative of Felucca. A fork of
 either must remain GPL-3.0 and keep the original copyright notices.
 
-## 6. Open decisions
+## 6. Decisions
 
-- Base project: fork **Melodee** (dual-core, song features, more polyphony), fork
-  **Felucca** (simpler, the upstream project), or our own app on **felucca-bsp** only (the most
-  work).
-- Whether a stock-firmware round trip and recovery path has been tested on this unit
-  before the first custom flash.
+- Base project: **Melodee 1.6.1** (forked with its full history; GPL-3.0-only).
+- UI direction: see [UI_DIRECTION.md](UI_DIRECTION.md).
+- Still open: test that this unit can go back to the stock firmware and recover before the
+  first custom flash.
