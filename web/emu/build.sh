@@ -15,6 +15,7 @@ mkdir -p build/emu
 emcc -O2 -ffp-contract=off -std=gnu99 -w -Ibuild/gen -Ifirmware/src -Itests -DMELODEE_VERSION="\"$VERSION\"" \
     --no-entry -sSTANDALONE_WASM -sSTACK_SIZE=1048576 -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=0 \
     -o build/emu/melodee.wasm web/emu/melodee_web.c
-sed "s/@VERSION@/$VERSION/g" web/emu/index.html > build/emu/index.html
+STAMP=$(date +%s)
+sed "s/@VERSION@/$VERSION/g; s/@STAMP@/$STAMP/g" web/emu/index.html > build/emu/index.html   # (the stamp: the browser fetches a rebuild's worklet and wasm afresh)
 cp web/emu/worklet.js build/emu/
 echo "emu: build/emu ($(wc -c < build/emu/melodee.wasm | tr -d ' ') B wasm, $VERSION)"

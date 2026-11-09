@@ -224,9 +224,9 @@ function draw(fb) {
 $("power").addEventListener("click", async () => {
   $("power").disabled = true;
   try {
-    const wasm = await (await fetch("melodee.wasm")).arrayBuffer();
+    const wasm = await (await fetch("melodee.wasm?v=@STAMP@")).arrayBuffer();   /* (@STAMP@: the build, so a rebuild is fetched afresh) */
     const ac = new AudioContext({ sampleRate: 44100, latencyHint: "interactive" });
-    await ac.audioWorklet.addModule("worklet.js");
+    await ac.audioWorklet.addModule("worklet.js?v=@STAMP@");
     node = new AudioWorkletNode(ac, "melodee", { numberOfInputs: 0, outputChannelCount: [2] });
     node.connect(ac.destination);
     node.port.onmessage = (e) => {
