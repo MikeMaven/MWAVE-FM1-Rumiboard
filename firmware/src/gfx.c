@@ -1311,6 +1311,13 @@ static void draw_text_box(uint32_t x, uint32_t y, uint32_t w, const aafont_t *f,
 {
     draw_text_line(x, y, w, f, s, c, T_BG, align);
 }
+/* Rumiboard's power-on logo (main.c, and the browser emulator's power-on): RUMI over BOARD in the large type,
+ * one line being wider than the screen */
+static void draw_boot_logo(void)
+{
+    draw_text_box(0, 30, 240, TY_HR, "RUMI", T_THEME, 1);
+    draw_text_box(0, 87, 240, TY_HR, "BOARD", T_TEXT, 1);
+}
 
 #ifdef GFX_HOOK_LIMIT_SOURCE
 #define cv_begin(w,h,bg) (GFX_HOOK_LIMIT_SOURCE(w,h,__FILE__,__LINE__),cv_begin(w,h,bg))

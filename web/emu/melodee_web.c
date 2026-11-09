@@ -35,8 +35,13 @@ EXPORT(web_boot) void web_boot(uint32_t master)       /* main.c melodee_init, as
     song.master_q12 = (master * master) >> 8;
     settings.palette = UI_DEFAULT_INDEX;
     palette_set(settings.palette);
-    ui.force = 1;
     screen_clear();
+    lcd_fill(0, 0, 240, 240, T_BG);                    /* Rumiboard: main.c's power-on screen, for SPLASH_MS */
+    draw_boot_logo();
+    draw_text_box(0, 150, 240, TY_TX, "Lofi synth + groovebox", T_MID, 1);
+    draw_text_box(0, 182, 240, TY_LB, MELODEE_VERSION, T_MID, 1);
+    memcpy(fb_seen, host_screen, sizeof fb_seen);
+    fb_gen++;
 }
 
 /* the panel: matrix ids (PANEL_DEFAULT's), as fm1_in and the scan would have them */
@@ -99,13 +104,18 @@ EXPORT(web_now) uint32_t web_now(void) { return now_ms; }
 static float ring[RING * 2u], out_l[1024], out_r[1024];
 static uint32_t ring_w, ring_r, owed;
 
+#define SPLASH_MS 1800u                                /* the power-on screen, then the UI */
 static void tick(void)
 {
     now_ms++;
+    if (now_ms == SPLASH_MS) {
+        ui.force = 1;
+        screen_clear();
+    }
     fm1_ms++;
     host_ticks += 1000u;                               /* (ui_test.c: FM1_TICKS_PER_US 1) */
     ui_input();
-    if (now_ms % 15u == 0u) {
+    if (now_ms % 15u == 0u && now_ms > SPLASH_MS) {
         ui_leds();
         ui_draw();
         if (memcmp(fb_seen, host_screen, sizeof fb_seen)) {

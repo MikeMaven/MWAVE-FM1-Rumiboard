@@ -12,7 +12,7 @@ command -v emcc >/dev/null 2>&1 || { echo "emu: no emcc (Emscripten)"; exit 1; }
 "$PY" tools/gen_909_tables.py build/gen/x0x_drum_tables.h >/dev/null
 VERSION=$(sed -n 's/^#define MELODEE_VERSION "\([^"]*\)".*/\1/p' firmware/src/melodee.c | head -n 1)
 mkdir -p build/emu
-emcc -O2 -ffp-contract=off -std=gnu99 -w -Ibuild/gen -Ifirmware/src -Itests \
+emcc -O2 -ffp-contract=off -std=gnu99 -w -Ibuild/gen -Ifirmware/src -Itests -DMELODEE_VERSION="\"$VERSION\"" \
     --no-entry -sSTANDALONE_WASM -sSTACK_SIZE=1048576 -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=0 \
     -o build/emu/melodee.wasm web/emu/melodee_web.c
 sed "s/@VERSION@/$VERSION/g" web/emu/index.html > build/emu/index.html

@@ -46,14 +46,14 @@ static const char *const MI_USB_NAME[4] = {"IN+OUT", "IN", "OUT", "OFF"};
 static const char *const MI_MIDI_KNOB_NAME[MK_PROFILES] = {"OFF", "GENERAL", "MINILAB"};
 static const char *const MI_MIDI_MODE_NAME[MK_MODES] = {"ABSOLUTE", "REL 1", "REL 2", "REL 3"};
 
-/* https://keremimo.github.io/melodee, QR version 3, correction M (segno; checked with a decoder).
+/* https://github.com/mikemaven/MWAVE-FM1-Rumiboard (Rumiboard's source), QR version 3, correction L (segno).
  * One row per word, leftmost module in bit 0; the constant matrix needs no encoder or RAM. */
 static const uint32_t ABOUT_QR[29] = {
-    0x1FC6EB7Fu, 0x104EF341u, 0x175C795Du, 0x1747C65Du, 0x174CB15Du, 0x10417241u,
-    0x1FD5557Fu, 0x001C5A00u, 0x1D23F9F9u, 0x0D8F5EA5u, 0x0557D275u, 0x137256B4u,
-    0x10C9E87Cu, 0x1FC7940Du, 0x143AD76Du, 0x15706E91u, 0x021C8767u, 0x0D1C8893u,
-    0x1309E463u, 0x07A1260Bu, 0x0FFBAC53u, 0x0316B300u, 0x035BAB7Fu, 0x011ABF41u,
-    0x1BF9275Du, 0x102DF35Du, 0x1DB1E85Du, 0x16A01241u, 0x00D06B7Fu,
+    0x1FCC647Fu, 0x1057C741u, 0x174AC15Du, 0x1744825Du, 0x1747375Du, 0x104DE541u,
+    0x1FD5557Fu, 0x0006CD00u, 0x0DC9B8CBu, 0x12520AA1u, 0x0F2D3166u, 0x0D0DB687u,
+    0x1A7B154Fu, 0x003ED23Du, 0x1FD13B72u, 0x0A73271Cu, 0x089302C8u, 0x12F1BA2Cu,
+    0x19A003F5u, 0x19B7CE90u, 0x05F97AEDu, 0x1D199300u, 0x0953277Fu, 0x0F113A41u,
+    0x11F63C5Du, 0x07D8B75Du, 0x17181A5Du, 0x093FE341u, 0x0BF0917Fu,
 };
 
 static void draw_about_qr(int32_t x, int32_t y)
@@ -79,6 +79,10 @@ static const menu_credit_t MENU_CREDITS[] = {
     {"https://github.com/w0ts/optimist", MC_URL},
     {"", MC_TEXT},
 #endif
+    {"MELODEE / UPSTREAM", MC_TITLE},                  /* Rumiboard is a modified Melodee */
+    {"Ellic Studio, Kerem Kilic / GPL-3.0", MC_TEXT},
+    {"https://github.com/keremimo/melodee", MC_URL},
+    {"", MC_TEXT},
     {"FELUCCA / UPSTREAM", MC_TITLE},                  /* Melodee is a modified Felucca */
     {"H\xFCgelton Instruments, Leo Kuroshita / GPL-3.0", MC_TEXT},
     {"https://github.com/hugelton/Felucca", MC_URL},
@@ -167,16 +171,16 @@ static int32_t menu_document(int32_t y, int draw)
 {
     uint32_t i;
     if (draw) {                                       /* (docs/design: mock/r6_pages About, the large type) */
-        cv_text(6, y + 2, TY_HR, "Melodee", T_THEME);
+        cv_text(6, y + 14, TY_VL, "Rumiboard", T_THEME);
         cv_text(6, y + 60, TY_TX, MELODEE_VERSION, T_TEXT);
         cv_text(6, y + 86, TY_LB, __DATE__, T_MID);
         draw_about_qr(158, y + 66);
     }
-    y = menu_text("Multi-engine synthesizer", y + 146, T_SEC, draw);
-    y = menu_text("\xA9 2026 Kerem Kilic, Ellic Studio", y + 6, T_TEXT, draw);
-    y = menu_text("Based on Felucca by Leo Kuroshita, H\xFCgelton Instruments", y, T_TEXT, draw);
+    y = menu_text("Lofi synth, sampler + groovebox", y + 146, T_SEC, draw);
+    y = menu_text("Based on Melodee \xA9 2026 Kerem Kilic, Ellic Studio", y + 6, T_TEXT, draw);
+    y = menu_text("and Felucca by Leo Kuroshita, H\xFCgelton Instruments", y, T_TEXT, draw);
     y = menu_text("GPL-3.0-only", y, T_TEXT, draw);
-    y = menu_text("keremimo.github.io/melodee", y, T_MID, draw);
+    y = menu_text("github.com/mikemaven/mwave-fm1-rumiboard", y, T_MID, draw);
     y = menu_text("CREDITS", y + 14, T_THEME, draw) + 8;
     for (i = 0; i < NELEM(MENU_CREDITS); i++) {
         const menu_credit_t *c = &MENU_CREDITS[i];
@@ -192,7 +196,8 @@ static int32_t menu_document(int32_t y, int draw)
     y = menu_text("Fonts and icons: their licences travel with the source and the release files.", y, T_TEXT, draw);
     y = menu_text("NO WARRANTY", y, T_TEXT, draw);
     y = menu_text("Full notices in source:", y + 8, T_TEXT, draw);
-    y = menu_text("github.com/keremimo/melodee", y, T_MID, draw);
+    y = menu_text("github.com/mikemaven/mwave-fm1-rumiboard", y, T_MID, draw);
+    y = menu_text("Upstream: github.com/keremimo/melodee", y, T_MID, draw);
     return y + 4;
 }
 static int32_t menu_scroll_max(void)

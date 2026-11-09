@@ -221,9 +221,9 @@ static void fm1_main(void)
     settings_init();                           /* a readable default palette before loading flash */
     lcd_init();                                /* maintenance must be visible before any boot writes */
     lcd_fill(0, 0, 240, 240, T_BG);
-    draw_text_box(0, 70, 240, TY_HR, "MELODEE", T_THEME, 1);   /* (large type) */
-    draw_text_box(0, 140, 240, TY_TX, "Starting up", T_MID, 1);
-    draw_text_box(0, 176, 240, TY_LB, MELODEE_VERSION, T_MID, 1);   /* (#86: the version at power-on) */
+    draw_boot_logo();                          /* (large type) */
+    draw_text_box(0, 150, 240, TY_TX, "Starting up", T_MID, 1);
+    draw_text_box(0, 182, 240, TY_LB, MELODEE_VERSION, T_MID, 1);   /* (#86: the version at power-on) */
     lcd_sync();
     dsp_tables_init();                        /* the RAM lookup tables (FM6), before anything renders */
     persist_boot();
@@ -238,9 +238,9 @@ static void fm1_main(void)
     clock_boot();                             /* the voice budget at the clock found (never changed) */
     if (boot_work.state != 2u) {
         lcd_fill(0, 0, 240, 240, T_BG);
-        draw_text_box(0, 70, 240, TY_HR, "MELODEE", T_THEME, 1);
-        draw_text_box(0, 140, 240, TY_TX, "Multi-engine synth", T_MID, 1);
-        draw_text_box(0, 176, 240, TY_LB, MELODEE_VERSION, T_MID, 1);
+        draw_boot_logo();
+        draw_text_box(0, 150, 240, TY_TX, "Lofi synth + groovebox", T_MID, 1);
+        draw_text_box(0, 182, 240, TY_LB, MELODEE_VERSION, T_MID, 1);
     }
     if (melodee_dbg.magic != DBG_MAGIC) {
         memset(&melodee_dbg, 0, sizeof melodee_dbg);

@@ -1,15 +1,16 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
-     Melodee in the browser (web/emu): the firmware's UI and sound as WebAssembly, on a drawn FM-1.
+     Rumiboard in the browser (web/emu, from Melodee's): the firmware's UI and sound as WebAssembly, on a drawn
+     white-and-grey FM-1.
      web/emu/build.sh fills in the version. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Melodee in the browser</title>
+<title>Rumiboard in the browser</title>
 <style>
-  :root { --bg: #fff; --fg: #000; --dim: #777; --body: #3a3d42; --tray: #26282c; --knob: #1f2124; --btn: #2e3135;
-          --label: #e8e8ea; --key-w: #d9dadc; --key-b: #c9cacd; --lit: #ffb347; }
+  :root { --bg: #fff; --fg: #000; --dim: #777; --body: #ecebe7; --tray: #c4c6c9; --knob: #8f9297; --btn: #d6d8db;
+          --label: #2b2d31; --knob-mark: #f4f4f2; --key-w: #f7f7f5; --key-b: #b8bbbf; --lit: #ffb347; }
   @media (prefers-color-scheme: dark) { :root { --bg: #000; --fg: #fff; --dim: #888; } }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
   main { max-width: 1000px; margin: 0 auto; padding: 32px 16px; }
@@ -25,14 +26,14 @@
   .bezel { background: #111214; border-radius: 11%; }
   canvas { image-rendering: pixelated; background: #000; }
   .label { color: var(--label); font-size: 1.7cqw; font-weight: 600; letter-spacing: .05em; text-align: center; pointer-events: none; white-space: nowrap; }
-  .knob { border-radius: 50%; background: var(--knob); box-shadow: 0 0 0 .5cqw var(--tray), inset 0 0 0 .2cqw #44474c;
+  .knob { border-radius: 50%; background: var(--knob); box-shadow: 0 0 0 .5cqw var(--tray), inset 0 0 0 .2cqw #7a7d82;
           cursor: ns-resize; touch-action: none; transform: rotate(var(--angle, 0deg)); }
-  .knob::after { content: ""; position: absolute; left: 50%; top: 8%; width: .3cqw; height: 22%; margin-left: -.15cqw; background: var(--label); border-radius: 2px; }
-  .btn { background: var(--btn); border-radius: 9px; box-shadow: inset 0 0 0 1.5px #4a4d52; color: var(--label); font-size: 1.4cqw;
+  .knob::after { content: ""; position: absolute; left: 50%; top: 8%; width: .3cqw; height: 22%; margin-left: -.15cqw; background: var(--knob-mark); border-radius: 2px; }
+  .btn { background: var(--btn); border-radius: 9px; box-shadow: inset 0 0 0 1.5px #a9acb0; color: var(--label); font-size: 1.4cqw;
          font-weight: 600; display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: none; }
   .btn.held { filter: brightness(1.5); }
   .btn.lit { color: #1a1206; background: var(--lit); box-shadow: 0 0 1.4cqw var(--lit); }
-  .key { border-radius: 999px; background: var(--key-w); cursor: pointer; touch-action: none; display: flex; align-items: flex-end;
+  .key { border-radius: 999px; background: var(--key-w); box-shadow: inset 0 0 0 1px #c9cbce; cursor: pointer; touch-action: none; display: flex; align-items: flex-end;
          justify-content: center; padding-bottom: .8cqw; color: #55575c; font-size: 1.3cqw; font-weight: 600; box-sizing: border-box; }
   .key.black { background: var(--key-b); }
   .key.held { filter: brightness(.8); }
@@ -45,10 +46,9 @@
 </head>
 <body>
 <main>
-  <h1>Melodee in the browser</h1>
-  <p>Melodee @VERSION@'s UI and sound, as WebAssembly, on a drawn FM-1: the same code the FM-1 runs. Mouse, touch,
-    or the computer keyboard (the letters on the keys). Nothing is saved; there is no USB.
-    <a href="../webapp/installer/">Install it on your FM-1</a>.</p>
+  <h1>Rumiboard in the browser</h1>
+  <p>Rumiboard's UI and sound (based on Melodee @VERSION@), as WebAssembly, on a drawn FM-1: the same code the FM-1
+    runs. Mouse, touch, or the computer keyboard (the letters on the keys). Nothing is saved; there is no USB.</p>
   <div class="device" id="device">
     <div class="poweron" id="poweron"><button id="power">Switch on</button></div>
   </div>
@@ -56,7 +56,9 @@
     <label class="small">MIDI in <select id="midiin"><option value="">none</option></select></label>
     <span class="small" id="status"></span>
   </div>
-  <p class="small">Melodee is GPL-3.0, no warranty. <a href="https://github.com/keremimo/melodee">Source</a>.
+  <p class="small">Rumiboard is GPL-3.0, no warranty. <a href="https://github.com/mikemaven/MWAVE-FM1-Rumiboard">Source</a>.
+    Based on <a href="https://github.com/keremimo/melodee">Melodee</a> by Kerem Kilic (Ellic Studio) and
+    <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita (H&uuml;gelton Instruments).
     M-VAVE and FM-1 are trademarks of their respective owners.</p>
 </main>
 <script>
