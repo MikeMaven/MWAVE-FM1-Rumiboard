@@ -35,6 +35,8 @@ BG_RGB, DARK_RGB = (234, 232, 226), (26, 26, 30)       # the preview's backgroun
 # is a third arm (the one reaching up is that arm); its seams (cut-outs) become body, so the arm vanishes into it.
 PATCHES = {
     "master_sloth": [("fill", None, 56, 56, 72, 70, (0, 4, 5, 6), 1)],
+    # the chameleon's last frame (the bend): its eye white with a dark pupil, as at the perch, not orange
+    "pluck_chameleon": [("fill", [3], 401, 34, 415, 48, (5,), 4), ("fill", [3], 407, 39, 412, 44, (0, 4, 5), 3)],
 }
 # Single frames that replace a sheet's pose (0 .. 3): an image of one figure, possibly inside a mock of the screen
 # (docs/creatures/refs/frames/), or (path, (fx0, fy0, fx1, fy1)): that part of the image, as fractions (an image
