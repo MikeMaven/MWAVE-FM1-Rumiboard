@@ -41,7 +41,10 @@ PATCHES = {
     "master_sloth": [("fill", [0], 72, 0, 114, 22, (1,), 0), ("fill", [0], 72, 0, 114, 9, (5, 6), 0),
                      ("fill", [1], 76, 0, 116, 24, (1,), 0), ("fill", [1], 78, 0, 116, 9, (5, 6), 0),
                      ("fill", [2], 76, 0, 100, 34, (1, 5), 0),
-                     ("fill", [3], 76, 0, 112, 31, (1,), 0), ("fill", [3], 78, 0, 100, 15, (5, 6), 0)],
+                     ("fill", [3], 76, 0, 112, 31, (1,), 0), ("fill", [3], 78, 0, 100, 15, (5, 6), 0),
+                     # the shoulder left above the head's curve: ("cut", poses, x0, y0, x1, y1, "above")
+                     ("cut", [0], 94, 22, 118, 34, "above"), ("cut", [1], 96, 24, 120, 36, "above"),
+                     ("cut", [3], 94, 31, 118, 41, "above")],
     # the chameleon's last frame (the bend): its eye white with a dark pupil, as at the perch, not orange
     "pluck_chameleon": [("fill", [3], 41, 34, 55, 48, (5,), 4), ("fill", [3], 47, 39, 52, 44, (0, 4, 5), 3),
                         ("fill", [2], 49, 42, 60, 53, (5,), 4), ("fill", [2], 52, 45, 57, 50, (0, 4, 5), 3)],   # the reach's too
@@ -316,7 +319,17 @@ def main():
                     roles.putpixel((ox + x, oy + y), r)
         roles = despeckle(roles)
         rp = roles.load()
-        for patch in PATCHES.get(name, []):
+        edited = Path(a.out) / "edits" / f"{name}.png"    # a hand-edited copy of the preview (any whole scale): the
+        if edited.exists():                                # truth for this creature; the sheet's patches do not apply
+            e = Image.open(edited).convert("RGB")
+            sc = e.width // (a.w * 4)
+            e = e.resize((a.w * 4, a.h), Image.NEAREST) if sc > 1 else e
+            ep = e.load()
+            for y in range(a.h):
+                for x in range(a.w * 4):
+                    rp[x, y] = min(role_rgb, key=lambda r: dist(ep[x, y], role_rgb[r]))
+            print(f"  {name}: from the edited {edited}")
+        for patch in ([] if edited.exists() else PATCHES.get(name, [])):
             op, poses = patch[0], patch[1]
             for k in (range(4) if poses is None else poses):
                 if op == "fill":
@@ -325,12 +338,13 @@ def main():
                         for x in range(k * a.w + x0, k * a.w + x1):
                             if rp[x, y] in from_roles:
                                 rp[x, y] = to_role
-                elif op == "cut":
-                    _, _, x0, y0, x1, y1 = patch
-                    for x in range(x0, x1):                   # (a belly: the line bows down, rising near its end)
+                elif op == "cut":                         # below a curve bowing from (x0, y0) to (x1, y1), or above a
+                    _, _, x0, y0, x1, y1 = patch[:6]      # straight line, the pixels become background
+                    above = len(patch) > 6 and patch[6] == "above"
+                    for x in range(x0, x1):
                         t = (x - x0) / (x1 - x0)
-                        yc = round(y0 + (y1 - y0) * t * t)
-                        for y in range(yc, a.h):
+                        yc = round(y0 + (y1 - y0) * (t if above else t * t))
+                        for y in (range(0, yc) if above else range(yc, a.h)):
                             rp[k * a.w + x, y] = 0
         for y in range(roles.height):
             for x in range(roles.width):
