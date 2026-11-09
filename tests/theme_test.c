@@ -50,7 +50,7 @@ int main(int argc, char **argv)
            !strcmp(UI_PALETTES[2].name, "CONTRAST") && !strcmp(UI_PALETTES[3].name, "SUNSET") &&
            !strcmp(UI_PALETTES[4].name, "OCEAN") && !strcmp(UI_PALETTES[5].name, "NEON") &&
            !strcmp(UI_PALETTES[6].name, "CANDY") && !strcmp(UI_PALETTES[7].name, "LO-FI") &&
-           !strcmp(UI_PALETTES[8].name, "RUMI") && !strcmp(UI_PALETTES[9].name, "DUSK") &&
+           !strcmp(UI_PALETTES[8].name, "RUMI") && !strcmp(UI_PALETTES[9].name, "1984") &&
            !strcmp(UI_PALETTES[UI_DEFAULT_INDEX].name, "RUMI") &&
            !strcmp(UI_PALETTES[UI_GRAY_INDEX].name, "GRAY"));
     for (unsigned pt = 0; pt < UI_PAL_ENTRIES * 4u; pt++) {

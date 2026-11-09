@@ -2354,7 +2354,7 @@ int main(int argc, char **argv)
     const char *out = argc > 1 ? argv[1] : "build/ui_new";
     char path[600];
     uint32_t p, s;
-    static const char *const SHOW[] = {"RUMI", "DUSK", "NIGHT", "DAY", "CONTRAST", "SUNSET", "OCEAN", "NEON", "CANDY", "LO-FI", "GRAY"};
+    static const char *const SHOW[] = {"RUMI", "1984", "NIGHT", "DAY", "CONTRAST", "SUNSET", "OCEAN", "NEON", "CANDY", "LO-FI", "GRAY"};
     snprintf(path, sizeof path, "%s/report.txt", out);
     rep = fopen(path, "w");
     if (!rep) { fprintf(stderr, "cannot write %s\n", path); return 1; }
@@ -2394,7 +2394,7 @@ int main(int argc, char **argv)
             draw((int)s);
             lint();
             if (p == UI_GRAY_INDEX) { audit_scene(S_NAME[s]); aud = 0; mono_check(); }
-            for (k = 0; k < UI_RENDER_SHOW; k++)    /* (the suite: RUMI DUSK NIGHT DAY CONTRAST; -DUI_RENDER_SHOW=10 all) */
+            for (k = 0; k < UI_RENDER_SHOW; k++)    /* (the suite: RUMI 1984 NIGHT DAY CONTRAST; -DUI_RENDER_SHOW=10 all) */
                 if (!strcmp(UI_PALETTES[p].name, SHOW[k])) write_ppm(out, SHOW[k], S_NAME[s]);
         }
     song_punch_sweep(out);

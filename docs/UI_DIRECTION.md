@@ -20,7 +20,7 @@ Everything we draw is our own.
 | Palette | Role | Background / ink | Track (pad) colours |
 |---|---|---|---|
 | **RUMI** (default) | the chassis: light, matches the white-and-grey unit | warm grey `#EAE8E2` / charcoal `#1A1A1E` | red, cobalt, green, burnt orange |
-| **DUSK** | the night version | charcoal `#1C1C1F` / off-white `#F2F0EA` | bright red, sky blue, green, yellow |
+| **1984** | the night version, named after nineteen84 (the lofi house alias) | charcoal `#1C1C1F` / off-white `#F2F0EA` | bright red, sky blue, green, yellow |
 
 Both pass the generator's WCAG contrast checks for every track and knob shade.
 On a light background the pad colours have to be fairly dark to stay readable,
@@ -31,7 +31,7 @@ Rendered from the firmware's own drawing code (`tests/ui_render.c`):
 
 ![RUMI](media/rumiboard/rumi_palette.png)
 
-![DUSK](media/rumiboard/dusk_palette.png)
+![1984](media/rumiboard/1984_palette.png)
 
 ## 2. Shape and type
 
@@ -76,7 +76,7 @@ Other touches:
 
 ## 5. Order of work
 
-1. ✅ RUMI / DUSK palettes, RUMI as the default.
+1. ✅ RUMI / 1984 palettes, RUMI as the default.
 2. Rebrand the visible strings (boot screen, About, package name) to Rumiboard, keeping the
    Melodee/Felucca credits.
 3. Pad-style selection and lanes.

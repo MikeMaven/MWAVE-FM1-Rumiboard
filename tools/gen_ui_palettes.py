@@ -48,10 +48,10 @@ PALETTES = [
     ("LO-FI",    (32, 28, 26),    (48, 42, 38),    (236, 226, 208), (250, 244, 232),
      ((218, 140, 128), (214, 182, 104), (146, 184, 142), (142, 164, 206))),
     # Rumiboard: RUMI (the default) is the FM-1's white-and-grey chassis: warm light grey, charcoal ink and four
-    # bold pad colours (red, cobalt, green, orange). DUSK is its charcoal night version with bright pads.
+    # bold pad colours (red, cobalt, green, orange). 1984 (named after nineteen84, the lofi house alias) is its charcoal night version with bright pads.
     ("RUMI",     (234, 232, 226), (220, 217, 210), (26, 26, 30),    (18, 18, 22),
      ((166, 16, 32), (20, 68, 170), (0, 88, 46), (128, 52, 0))),
-    ("DUSK",     (28, 28, 31),    (42, 42, 46),    (242, 240, 234), (255, 255, 255),
+    ("1984",     (28, 28, 31),    (42, 42, 46),    (242, 240, 234), (255, 255, 255),
      ((255, 120, 112), (96, 164, 255), (86, 214, 122), (255, 196, 56))),
 ]
 DEFAULT = "RUMI"                   # the palette a fresh device (and any unknown stored id) uses
