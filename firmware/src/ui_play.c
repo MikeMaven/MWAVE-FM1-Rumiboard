@@ -12,8 +12,6 @@
 #define PL_CR_H 88                                      /* .. rows 88 .. 176 */
 #define PL_CR_X 60
 #define PL_CR_Y (Y_GRAPH + 4)
-#define PL_CR_SIZE 64                                   /* the blob at rest, px tall */
-#define PL_CR_SIZE_FISH 76                              /* the fish's body (its lure rises above it) */
 #define PL_NAME_H 26
 #define PL_NAME_Y (ST_BAND_Y - PL_NAME_H - 2)           /* the name's line: rows 182 .. 207 */
 
@@ -33,7 +31,7 @@ static void play_creature(uint32_t kind)
         play.cr = sig;
         for (band = 0; band < (uint32_t)PL_CR_H; band += CV_MAX / (uint32_t)PL_CR_W) {
             cv_begin_band(PL_CR_W, PL_CR_H, T_BG, band);
-            creature_draw_at(kind, PL_CR_W / 2, PL_CR_H - 4, kind == CR_FISH ? PL_CR_SIZE_FISH : PL_CR_SIZE);
+            creature_draw_at(kind, PL_CR_W / 2, PL_CR_H - 4, creature_size(kind));
             cv_blit_band(PL_CR_X, PL_CR_Y);
         }
         return;

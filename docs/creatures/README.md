@@ -36,12 +36,15 @@ it is drawn on the device.
 | **Lofi master bus** | Sloth with a record (`refs/master_sloth.jpg`) | lazy wobble → adjust weight → needle skip! → return to groove | the record spins at the tempo, wobbles with wow/flutter, the needle skips on a peak (limiter) or the bit-crusher; the sloth blinks slowly |
 | *(any sound without its own)* | The blob (`ui_creature.c` CR_BLOB) | squash on a note, spring back, breathe | the first creature, now the fallback |
 
-## Order of building
+## Status
 
-1. Anglerfish (sub bass): the first sheet-based creature, replacing the blob for BASS sounds; the blob
-   becomes the fallback for every other sound.
-2. Bulldog (stabs) and chameleon (plucks): action-on-note creatures, the same pattern.
-3. Cloud (pads): envelope- and knob-driven growth.
-4. Octopus (drums): per-lane triggers.
-5. Hedgehog (piano) and axolotl (keys).
-6. Sloth: the master bus, once the lofi bus exists.
+All nine are drawn and moving (`firmware/src/ui_creature.c`), a first pass for review. Wired by Melodee's
+sound categories: BASS → anglerfish, BRASS → bulldog (stabs, until our presets name their creature),
+PLUCK / LEAD → chameleon, PAD / STRING → cloud, DRUM → octopus, KEYS / ORGAN / BELL → axolotl, the
+rest → blob. The hedgehog waits for the felted-piano preset and the sloth for the lofi bus (both show in
+the review renders through the test-only `cr_force`). Review renders: `creature_*` scenes in
+`tests/ui_render.c`; a filmstrip of each creature's action is made by the film tool in the scratchpad
+(to be added to tools/).
+
+Next: a creature id per preset (so a sound names its creature instead of its category deciding), the
+review's changes, the hop transition when ALGORITHM changes track.
