@@ -89,6 +89,13 @@ static void sound_name(const track_t *t, char *b);
 #define PREF_PIXEL 64u                         /* Settings > FONT: PIXEL (else RUBIK) */
 #define TY_PIXEL ty_pixel()
 static uint32_t ty_pixel(void) { return (PREF_BITS & PREF_PIXEL) != 0u || !RES_OK(); }   /* (gfx.c TY_*; Rubik: res.c) */
+/* HOME's pages (ui.home_pg; HOME tapped on HOME turns to the next): Stage's rows (ui_stage.c), the chord view
+ * (ui_view.c) and Rumiboard's play page (ui_play.c: the sound's creature, large). The device starts on the play page;
+ * tests/ui_test.c keeps Melodee's Stage (its power-on draws no page) */
+enum { HOME_PG_STAGE, HOME_PG_VIEW, HOME_PG_PLAY, HOME_PG_N };
+#ifndef UI_HOME_PG_DEFAULT
+#define UI_HOME_PG_DEFAULT HOME_PG_PLAY
+#endif
 /* HOME SELECT (the menu): what SELECT turns on HOME, kept in favorites.factory[15][25] (0, any other: BPM) */
 enum { HS_BPM, HS_MOD, HS_LEVEL, HS_SWING, HS_TRANS, HS_CHORD, HS_ARATE, HS_PATTERN, HS_OFF, HS_OCT, HS_N };
 static const char *const HS_NAME[HS_N] = {"BPM", "MOD WHEEL", "LEVEL", "SWING", "TRANSPOSE", "CHORD", "ARP RATE", "PATTERN",
@@ -147,7 +154,7 @@ static uint8_t sync_reload;                  /* engine / preset / project / user
 static struct {
     uint8_t designer_mode;       /* the sound designer: START, the stages (ui_designer.c) */
     uint8_t home;
-    uint8_t home_pg;             /* HOME's page: 0 Stage, 1 the chord view (ui_view.c); HOME tapped on HOME turns it */
+    uint8_t home_pg;             /* HOME's page (HOME_PG_*): Stage, the chord view, the play page; HOME tapped on HOME turns it */
     uint8_t drum_sound;
     uint8_t page;                /* index into PAGES */
     uint8_t fam_last[FAM_COUNT]; /* last page used per family */

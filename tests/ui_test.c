@@ -1075,7 +1075,9 @@ static int test_home_view(void)
     press(B_HOME);
     bad += check("HOME on Stage: the second page (the chord view)", ui.home && ui.home_pg == 1u);
     press(B_HOME);
-    bad += check("  HOME again: Stage", ui.home && ui.home_pg == 0u);
+    bad += check("  HOME again: the play page (Rumiboard)", ui.home && ui.home_pg == HOME_PG_PLAY);
+    press(B_HOME);
+    bad += check("  HOME once more: Stage", ui.home && ui.home_pg == 0u);
     press(B_HOME);
     open_family(FAM_EDIT); frame();
     press(B_HOME);

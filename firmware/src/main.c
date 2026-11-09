@@ -194,6 +194,7 @@ static void melodee_init(void)
     song.sel = 0;
     song.master_q12 = 2048;
     ui.home = 1;
+    ui.home_pg = UI_HOME_PG_DEFAULT;                /* (Rumiboard: the play page) */
     ui.force = 1;
 }
 

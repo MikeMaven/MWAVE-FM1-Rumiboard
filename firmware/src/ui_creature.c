@@ -58,13 +58,22 @@ static void creature_step(const track_t *t, int held)
     }
 }
 
-/* the creature right-aligned to x1, standing on row bottom; returns the x where the notes must end */
-static int32_t creature_draw(uint32_t kind, int32_t x1, int32_t bottom)
+/* what the drawing depends on (the play page redraws the creature when this changes) */
+static uint32_t creature_sig(void)
 {
-    int32_t s = cr.p, key = clamp(cr.key ? cr.key : 48, 24, 72), w0 = 22 + (72 - key) / 4, h0 = 22;
-    int32_t cx = x1 - 26, w, h, y0, r, ey, ex, my, mw, mh;
+    uint32_t s = (uint32_t)(cr.p + 256) * 7u + cr.key * 131u + cr.trk + (cr.vel >= 96u && cr.env > 32767 / 4) * 7919u;
+    if (cr.idle > 20u)
+        s += ((fm1_ms / 50u) % 48u) * 104729u;        /* (breathing) */
+    return s;
+}
+
+/* the creature centred on cx, standing on row bottom, h0 px tall at rest (the band: 22; the play page: 64) */
+static void creature_draw_at(uint32_t kind, int32_t cx, int32_t bottom, int32_t h0)
+{
+    int32_t s = cr.p, key = clamp(cr.key ? cr.key : 48, 24, 72), w0 = h0 + (72 - key) * h0 / 88;
+    int32_t w, h, y0, r, ey, ex, my, mw, mh, ed = h0 / 7 < 3 ? 3 : h0 / 7, th = h0 / 10 < 2 ? 2 : h0 / 10;
     if (kind != CR_BLOB)
-        return x1;
+        return;
     if (cr.idle > 20u) {                                /* at rest: breathing, a slow triangle of +-6 */
         int32_t ph = (int32_t)((fm1_ms / 50u) % 48u);
         s = (ph < 24 ? ph : 48 - ph) - 12;
@@ -73,31 +82,40 @@ static int32_t creature_draw(uint32_t kind, int32_t x1, int32_t bottom)
     h = h0 - h0 * s * (s < 0 ? 33 : 11) / (25 * 256);   /* 44 % flatter at full squash; stretched, three times as
                                                          * much per step the other way, so the rebound shows */
     w = w0 + w0 * s * (s < 0 ? 33 : 11) / (25 * 256);
-    if (h < 9) h = 9;
-    if (w < 12) w = 12;
+    if (h < h0 * 2 / 5) h = h0 * 2 / 5;
+    if (w < h0 / 2) w = h0 / 2;
     y0 = bottom - h;
     r = (w < h ? w : h) / 2;
     cv_rrect(cx - w / 2, y0, w, h, r, T_THEME, T_BG);
     ey = y0 + h * 2 / 5;                                /* the eyes: dots; squashed hard, squinting lines */
     ex = w / 5;
     if (s > 140) {
-        cv_rect(cx - ex - 1, ey, 3, 1, T_INK);
-        cv_rect(cx + ex - 1, ey, 3, 1, T_INK);
+        cv_rect(cx - ex - ed / 2, ey, ed, th / 2 < 1 ? 1 : th / 2, T_INK);
+        cv_rect(cx + ex - ed / 2, ey, ed, th / 2 < 1 ? 1 : th / 2, T_INK);
     } else {
-        cv_disc(cx - ex, ey, 3, T_INK, 0);
-        cv_disc(cx + ex, ey, 3, T_INK, 0);
+        cv_disc(cx - ex, ey, ed, T_INK, 0);
+        cv_disc(cx + ex, ey, ed, T_INK, 0);
     }
-    my = y0 + h * 3 / 5 + 1;                            /* the mouth: a line; a hard note, open with teeth */
+    my = y0 + h * 3 / 5 + th / 2;                       /* the mouth: a line; a hard note, open with teeth */
     if (cr.vel >= 96u && cr.env > 32767 / 4) {         /* (while the hard note sounds) */
         int32_t tx;
         mw = w / 2;
-        mh = clamp(h / 4, 3, 6);
+        mh = clamp(h / 4, th + 1, h0 / 4);
         if (my + mh > bottom - 1) mh = bottom - 1 - my;
-        cv_rrect(cx - mw / 2, my, mw, mh, 2, T_INK, T_THEME);
-        for (tx = cx - mw / 2 + 2; tx + 2 <= cx + mw / 2 - 2; tx += 4)
-            cv_rect(tx, my, 2, mh > 3 ? 2 : 1, T_THEME);
+        cv_rrect(cx - mw / 2, my, mw, mh, th, T_INK, T_THEME);
+        for (tx = cx - mw / 2 + th; tx + th <= cx + mw / 2 - th; tx += 2 * th)
+            cv_rect(tx, my, th, mh > th + 1 ? th : 1, T_THEME);
     } else {
-        cv_rect(cx - 2, my, 5, 1, T_INK);
+        cv_rect(cx - ed, my, 2 * ed - 1, th / 2 < 1 ? 1 : th / 2, T_INK);
     }
-    return cx - 26 - 4;
+}
+
+/* the band's creature (ui_stage.c stage_band): right-aligned to x1 standing on row bottom, 22 px tall at rest;
+ * returns the x where the notes must end */
+static int32_t creature_draw(uint32_t kind, int32_t x1, int32_t bottom)
+{
+    if (kind == CR_NONE)
+        return x1;
+    creature_draw_at(kind, x1 - 26, bottom, 22);
+    return x1 - 56;
 }

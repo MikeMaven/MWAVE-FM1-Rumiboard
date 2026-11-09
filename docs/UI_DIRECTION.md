@@ -33,6 +33,20 @@ Rendered from the firmware's own drawing code (`tests/ui_render.c`):
 
 ![1984](media/rumiboard/1984_palette.png)
 
+## 1b. The play page (HOME's first page)
+
+Home is a **play page** built around the sound, not the track list: the header (play state, tempo, the
+family chip), the four knob cards always out, the sound's **creature** large in the middle, its name under
+it, and the chord-and-notes band at the bottom. A sound without a creature yet shows its waveform in the
+creature's place. ALGORITHM still picks the track and PRESETS still browses sounds.
+
+HOME steps through three pages: **play**, Melodee's **track rows**, and its **circle-of-fifths chord view**
+(kept: it is useful). The header's page dots show which one is open. The device starts on the play page.
+
+Why the layout keeps Melodee's bands: the display link sends about 1,000 px per 1.3 ms, so a creature
+that animates every other frame must stay in a bounded canvas (120 × 88 px here); the static parts
+(cards, name) redraw only when they change.
+
 ## 2. Shape and type
 
 - Keep Melodee's 240 × 240 grid, cards and lanes.
@@ -95,8 +109,11 @@ design that fills the families.
    Melodee/Felucca credits. (Still Melodee: the USB / Bluetooth / MIDI device names and the
    package identity; they change with the release setup.)
 3. ✅ Pad-style rows on Home and the Mixer (`gfx.c` `pad_fill` / `pad_rrect`); other lists next.
-4. ✅ The first living visual: the blob for BASS sounds in Home's band (`firmware/src/ui_creature.c`,
-   the pattern for the others: `creature_of`, `creature_step`, `creature_draw`). Next creatures follow
-   their engines.
+4. ✅ The first living visual: the blob for BASS sounds (`firmware/src/ui_creature.c`, the pattern for the
+   others: `creature_of`, `creature_step`, `creature_draw_at`), small in Stage's band and large on the
+   play page.
+4b. ✅ The play page as HOME's first page (`firmware/src/ui_play.c`); HOME cycles play → rows → chord view.
+   Next: a creature per sound family (a generic one for sounds without their own), a hop transition
+   when ALGORITHM changes track.
 5. RUMI / 1984 sound families in the browser, the palette following the chosen sound.
 6. Mascot and transitions.

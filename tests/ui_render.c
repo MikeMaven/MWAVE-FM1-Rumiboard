@@ -452,7 +452,7 @@ static void eng(uint32_t e) { set_engine_of(TSEL, e); }
  * went with it: skipped) */
 #define E_FM ENGI_FM6
 
-enum { S_HOME, S_HOME_IDLE, S_HOME_NOTE, S_HOME_CHORD, S_HOME_INVERSION, S_HOME_WIDE, S_HOME_RELEASED, S_HOME_FM6, S_HOME_BLOB, S_HOME_BLOB_SOFT, S_MESSAGE, S_MESSAGE_KEY, S_PRESETS, S_PRESETS_NOFAV, S_PRESETS_CAT, S_PRESETS_PENDING, S_PRESETS_RECENT, S_USER, S_PROJECT, S_PROJECT_BOOT, S_TEMPO,
+enum { S_HOME, S_HOME_IDLE, S_HOME_NOTE, S_HOME_CHORD, S_HOME_INVERSION, S_HOME_WIDE, S_HOME_RELEASED, S_HOME_FM6, S_HOME_BLOB, S_HOME_BLOB_SOFT, S_HOME_PLAY, S_HOME_PLAY_WAVE, S_MESSAGE, S_MESSAGE_KEY, S_PRESETS, S_PRESETS_NOFAV, S_PRESETS_CAT, S_PRESETS_PENDING, S_PRESETS_RECENT, S_USER, S_PROJECT, S_PROJECT_BOOT, S_TEMPO,
        S_SONG_EMPTY, S_SONG, S_STEP, S_PATTERN, S_MOTION, S_DRUM, S_MIXER, S_MIXER_PAN,
        S_ENV, S_ENVDEST, S_LFO, S_MOD, S_SCL, S_CHORD, S_CHORD_WIDE, S_CHORD_OFF, S_CHORD_KIT, S_CHORD_AUTO, S_CHORD_AUTO_SET, S_CHORD_AUTO_MICRO, S_CHORD_MELODY, S_CHORD_MELODY_OPEN, S_ARP, S_VOICE, S_GLOBAL, S_SYSTEM,
        S_EDIT_SID, S_EDIT_DIGITAL, S_OP_ENV, S_EDIT_WHEEL, S_EDIT_PHYS,
@@ -484,7 +484,7 @@ enum { S_HOME, S_HOME_IDLE, S_HOME_NOTE, S_HOME_CHORD, S_HOME_INVERSION, S_HOME_
        S_REF_FMEG, S_REF_GRID, S_REF_SCALES, S_FX_PHASER, S_FX_WIDTH, S_FX_FORMANT, S_FX_TAPE, S_FX_SPIT, S_FX_ROOM, S_FX_CHORUS, S_FX_FULL, S_FX_SLOT2, S_FX_SLOT3, S_FX_RACK, S_FX_RACK_SPLIT, S_FX_RACK_PICK, S_FX_RACK_LIST, S_FX_BUS1, S_FX_BUS2, S_FX_BUS3, S_FX_SHARED, S_FX_SHARED_SPLIT, S_FX_SHARED_SHEET, S_FX_TONE_DARK, S_FX_TONE_THIN, S_BOOT_MIGRATION, S_BOOT_UPDATE, S_BOOT_ERROR, S_BOOT_COMPLETE, S_BOOT_WIPE_CONFIRM, S_BOOT_WIPING, S_BOOT_UPDATE_ERROR, S_BOOT_SETUP, S_MAP_DRUM_KIT, S_MAP_DRUM_HIT, S_MAP_DRUM_CATEGORY,
        S_STAGE_UNUSED1, S_STAGE_UNUSED3, S_MIXER_UNUSED2, S_MENU_TRACKS,
        S_FX_MIDIVERB, S_FX_MIDIDELAY, S_FX_MIDI_RACK, S_FX_MIDI_LIST, S_PUNCH_PEEK, S_PUNCH_ACTIVE, S_PUNCH_LOCK, S_PUNCH_MEMORY, S_PUNCH_END, S_REVERB, S_PEDAL_DRIVE, S_PEDAL_CRUSH, S_PEDAL_PHASER, S_PEDAL_CHORUS, S_PEDAL_FLANGER, S_PUNCH_LOOP, S_PEDAL_FOLD, S_STAGE_MIDI, S_STAGE_MIDI_PARTIAL, S_MIXER_MIDI, S_PATGRID_MIDI, S_SONG_MIDI, S_GLO_MIDI, S_MENU_MIDI_GENERAL, S_MENU_MIDI_MINILAB, S_MENU_MIDI_MODE, S_PATGRID_PRESET, S_PATGRID_PRESET_PENDING, S_SONG_LONG, S_SONG_CELL, S_SONG_COPY, S_SONG_RANGE, S_SONG_LOOP, S_SONG_PUNCH, S_SONG_PUNCH_ACTIVE, S_SONG_PUNCH_MEMORY, S_SONG_PRESET, S_SONG_PRESET_SHEET, S_SONG_PRESET_BROWSE, S_PATTERN_SOUND_SHEET, S_PATTERN_SOUND_BROWSE, S_COUNT };
-static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "home_note", "home_chord", "home_inversion", "home_wide", "home_released", "home_fm6", "home_blob", "home_blob_soft", "message", "message_key", "presets", "presets_nofav", "presets_cat", "presets_pending", "presets_recent", "user",
+static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "home_note", "home_chord", "home_inversion", "home_wide", "home_released", "home_fm6", "home_blob", "home_blob_soft", "home_play", "home_play_wave", "message", "message_key", "presets", "presets_nofav", "presets_cat", "presets_pending", "presets_recent", "user",
     "project", "project_boot", "tempo", "song_empty", "song", "step", "pattern", "motion", "drum",
     "mixer", "mixer_pan", "env", "env_dest", "lfo", "mod", "scl", "chord", "chord_wide", "chord_off", "chord_kit", "chord_auto", "chord_auto_set", "chord_auto_micro", "chord_melody", "chord_melody_open", "arp",
     "voice", "global", "system", "edit_sid", "edit_fm6", "op_env", "edit_wheel",
@@ -958,6 +958,10 @@ static void setup(int s)
     case S_HOME_BLOB:                                   /* (Rumiboard: a BASS sound's blob squashed by a hard note, teeth;
                                                          * the ISR's envelope state set by hand: no audio runs here) */
         song.sel = 1; input_on(TSEL, 36, 110); TSEL->m_env = 30000; TSEL->m_vel = 110; TSEL->m_key = 36; break;
+    case S_HOME_PLAY:                                   /* (Rumiboard's play page: the blob large, a hard note) */
+        ui.home_pg = HOME_PG_PLAY; song.sel = 1; input_on(TSEL, 36, 110); TSEL->m_env = 30000; TSEL->m_vel = 110; TSEL->m_key = 36; break;
+    case S_HOME_PLAY_WAVE:                              /* (.. a sound without a creature: its waveform) */
+        ui.home_pg = HOME_PG_PLAY; input_on(TSEL, 61, 100); break;
     case S_HOME_BLOB_SOFT:                              /* (.. a soft, higher note: no teeth) */
         song.sel = 1; input_on(TSEL, 43, 70); TSEL->m_env = 24000; TSEL->m_vel = 70; TSEL->m_key = 43; break;
     case S_HOME_FM6: eng(ENGI_FM6); /* fall through */

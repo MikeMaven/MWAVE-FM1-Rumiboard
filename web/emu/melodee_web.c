@@ -35,6 +35,7 @@ EXPORT(web_boot) void web_boot(uint32_t master)       /* main.c melodee_init, as
     song.master_q12 = (master * master) >> 8;
     settings.palette = UI_DEFAULT_INDEX;
     palette_set(settings.palette);
+    ui.home_pg = HOME_PG_PLAY;                          /* (Rumiboard: the play page at power-on, as main.c) */
     screen_clear();
     lcd_fill(0, 0, 240, 240, T_BG);                    /* Rumiboard: main.c's power-on screen, for SPLASH_MS */
     draw_boot_logo();
