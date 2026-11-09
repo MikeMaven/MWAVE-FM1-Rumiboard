@@ -35,15 +35,13 @@ BG_RGB, DARK_RGB = (234, 232, 226), (26, 26, 30)       # the preview's backgroun
 # pixels of the given roles in the box become the role. The sloth: the paw tucked under its body left of the face
 # is a third arm (the one reaching up is that arm); its seams (cut-outs) become body, so the arm vanishes into it.
 PATCHES = {
-    # The sloth: the arm reaching up to the record is its left arm, so the left front limb drawn resting under its
-    # head (with the claws at the bottom) is a third arm. It goes: its paw and forearm below the head become
-    # background, its upper outline (light seams) becomes body, so the body's belly is the bottom edge there.
-    # ("cut", poses, x0, y0, x1, y1): pixels below a curve from (x0, y0) bowing down to (x1, y1) become background: the
-    # belly's edge, continuing the body's curve from the front limb's foot up to under the head.
-    "master_sloth": [("fill", [0], 43, 56, 52, 74, (0, 4, 5, 6), 1), ("cut", [0], 52, 84, 120, 70),
-                     ("fill", [1], 43, 56, 53, 73, (0, 4, 5, 6), 1), ("cut", [1], 50, 86, 120, 72),
-                     ("fill", [2], 57, 56, 70, 74, (0, 4, 5, 6), 1), ("cut", [2], 48, 85, 120, 72),
-                     ("fill", [3], 57, 56, 70, 74, (0, 4, 5, 6), 1), ("cut", [3], 48, 85, 120, 70)],
+    # The sloth keeps the two limbs it lies on; the arm drawn reaching up over its back to the record (a third) goes:
+    # its body-coloured pixels above the head and back become background, and the claws of its hand; the tonearm
+    # (greys) stays with the record.
+    "master_sloth": [("fill", [0], 72, 0, 114, 22, (1,), 0), ("fill", [0], 72, 0, 114, 9, (5, 6), 0),
+                     ("fill", [1], 76, 0, 116, 24, (1,), 0), ("fill", [1], 78, 0, 116, 9, (5, 6), 0),
+                     ("fill", [2], 76, 0, 100, 34, (1, 5), 0),
+                     ("fill", [3], 76, 0, 112, 31, (1,), 0), ("fill", [3], 78, 0, 100, 15, (5, 6), 0)],
     # the chameleon's last frame (the bend): its eye white with a dark pupil, as at the perch, not orange
     "pluck_chameleon": [("fill", [3], 41, 34, 55, 48, (5,), 4), ("fill", [3], 47, 39, 52, 44, (0, 4, 5), 3),
                         ("fill", [2], 49, 42, 60, 53, (5,), 4), ("fill", [2], 52, 45, 57, 50, (0, 4, 5), 3)],   # the reach's too
