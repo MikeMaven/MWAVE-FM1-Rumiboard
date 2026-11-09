@@ -83,5 +83,9 @@ either must remain GPL-3.0 and keep the original copyright notices.
 
 - Base project: **Melodee 1.6.1** (forked with its full history; GPL-3.0-only).
 - UI direction: see [UI_DIRECTION.md](UI_DIRECTION.md).
+- **Keep Melodee's engines and factory sounds** (the Prophet-5 model and its 200 programs, such as
+  "It's a Prophet", the CZ, FM6, SID, PHYS and drum kits). The RUMI and 1984 families are added beside
+  them, not in their place; a sound found by tweaking a factory program is still a sound of ours.
+- Drum kits: see [SAMPLES.md](SAMPLES.md). USB stems and Ableton: see [USB_DAW.md](USB_DAW.md).
 - Still open: test that this unit can go back to the stock firmware and recover before the
   first custom flash.
