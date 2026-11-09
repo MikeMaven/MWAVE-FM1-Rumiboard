@@ -40,10 +40,10 @@ PATCHES = {
     # background, its upper outline (light seams) becomes body, so the body's belly is the bottom edge there.
     # ("cut", poses, x0, y0, x1, y1): pixels below a curve from (x0, y0) bowing down to (x1, y1) become background: the
     # belly's edge, continuing the body's curve from the front limb's foot up to under the head.
-    "master_sloth": [("fill", [0], 43, 56, 52, 74, (0, 4, 5, 6), 1), ("cut", [0], 52, 84, 104, 72),
-                     ("fill", [1], 43, 56, 53, 73, (0, 4, 5, 6), 1), ("cut", [1], 50, 86, 108, 73),
-                     ("fill", [2], 57, 56, 70, 74, (0, 4, 5, 6), 1), ("cut", [2], 48, 85, 106, 73),
-                     ("fill", [3], 57, 56, 70, 74, (0, 4, 5, 6), 1), ("cut", [3], 48, 85, 110, 72)],
+    "master_sloth": [("fill", [0], 43, 56, 52, 74, (0, 4, 5, 6), 1), ("cut", [0], 52, 84, 120, 70),
+                     ("fill", [1], 43, 56, 53, 73, (0, 4, 5, 6), 1), ("cut", [1], 50, 86, 120, 72),
+                     ("fill", [2], 57, 56, 70, 74, (0, 4, 5, 6), 1), ("cut", [2], 48, 85, 120, 72),
+                     ("fill", [3], 57, 56, 70, 74, (0, 4, 5, 6), 1), ("cut", [3], 48, 85, 120, 70)],
     # the chameleon's last frame (the bend): its eye white with a dark pupil, as at the perch, not orange
     "pluck_chameleon": [("fill", [3], 41, 34, 55, 48, (5,), 4), ("fill", [3], 47, 39, 52, 44, (0, 4, 5), 3),
                         ("fill", [2], 49, 42, 60, 53, (5,), 4), ("fill", [2], 52, 45, 57, 50, (0, 4, 5), 3)],   # the reach's too
