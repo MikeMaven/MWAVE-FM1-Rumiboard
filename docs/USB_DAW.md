@@ -51,17 +51,32 @@ millisecond of at most 1023 bytes.
 | 44.1 kHz, 24 bit | ~133 | 7 |
 
 So the full set (3 synth tracks + 8 drum lanes = 11 mono) only just fits, at 16 bit and 44.1 kHz,
-with nothing left for the effects pair. The practical design:
+with nothing left for the effects pair. Drums rarely need eight stems anyway. The grouping for our
+music (lofi house, chillhop):
 
-- **DRUM STEMS mode**: the drum track as **four group stems** (kick / snare + clap / hats / perc)
-  plus the three synth tracks and the effects pair: 9 channels, ~800 B/ms at 16 bit. Fits with
-  headroom.
-- An **8-lane** variant at 16 bit without the effects pair as an option, if the CPU allows.
-- 24 bit stays for the stereo and 4-track modes.
+| Drum stem | Lanes | Channels |
+|---|---|---:|
+| KICK | BD | 1 |
+| SNARE | SD + CP | 1 |
+| HATS | CH + OH | 1 |
+| TOMS | TM, as a stereo pair panned low-to-high left to right | 2 |
+| PERC | RS + CB (cowbell is rare in this music) | 1 |
+
+Six channels for the drum track. With the three synth tracks and the effects pair:
+
+| Mode | Channels | 44.1 kHz / 16 bit | 48 kHz / 16 bit |
+|---|---:|---|---|
+| **DRUM STEMS** (toms stereo) | 6 + 3 + 2 = 11 | ~979 B/ms: fits, just | 1056 B/ms: too much |
+| DRUM STEMS, toms mono | 5 + 3 + 2 = 10 | ~890 B/ms: fits | 960 B/ms: fits |
+| 4 TRACKS + effects pair (KARMA's) | 6 | fits at 24 bit too | fits |
+
+So DRUM STEMS is a 16-bit mode; a **TOMS: STEREO / MONO** setting chooses between the stereo toms
+and 48 kHz. 24 bit stays for the stereo and 4-track modes.
 
 CPU is the other limit: each extra stem is another buffer to collect and pack every block. KARMA's
 overload warning applies to us too. Measure on hardware before promising a channel count; the
-mixer's existing stem path (`ua_tracks`) is where the work goes.
+mixer's existing stem path (`ua_tracks`) is where the work goes. The drum engine itself needs to
+render each group to its own buffer (today its eight lanes sum into one).
 
 ## 4. Ableton side
 
@@ -82,5 +97,5 @@ mixer's existing stem path (`ua_tracks`) is where the work goes.
 
 1. Verify 4 TRACKS + MIDI + clock in Live on the real unit.
 2. Effects pair (channels 5–6) and 48 kHz, after KARMA / JIANT FM.
-3. DRUM STEMS (four groups), then measure; 8 lanes if it holds.
+3. DRUM STEMS (kick / snare / hats / toms / perc), then measure the CPU on hardware.
 4. Live template and a short guide.
