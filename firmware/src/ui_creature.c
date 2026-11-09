@@ -189,7 +189,7 @@ static uint32_t creature_pose(uint32_t kind)
                                                          * it rises, full bloom near the top, dissipating as it falls */
         int32_t e = cr.env >> 7, pk = cr.peak < 16u ? 16 : cr.peak;
         if (e * 10 >= pk * 7) return 2;
-        if (e * 10 < pk * 2) return r < 40u && cr.act != 255u ? 3 : 0;
+        if (e * 10 < pk * 2) return r < 16u && cr.act != 255u ? 3 : 0;   /* (dissipating half a second, then rest) */
         return cr.rising || a < 12u ? 1 : 3;
     }
     case CR_OCTOPUS:                                    /* the lanes */
