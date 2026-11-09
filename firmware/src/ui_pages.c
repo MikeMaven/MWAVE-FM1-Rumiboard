@@ -825,7 +825,7 @@ static void pv_meter_draw(uint32_t k, int32_t x, int32_t y, uint16_t c, uint16_t
 static void pv_meter(uint32_t k, uint16_t c)
 {
     int32_t h = st_row_h();
-    uint16_t bg = ux_mix(T_BG, c, k == song.sel ? 24 : 11);
+    uint16_t bg = pad_fill(trk[k].p[P_MUTE] ? T_TRK(k) : c, k == song.sel);   /* (as pv_strip) */
     cv_begin(PV_MIX_BAR_W, 3, bg);
     pv_meter_draw(k, 0, 0, c, bg);
     cv_blit((uint32_t)(BOX_X + PV_MIX_BAR_X), (uint32_t)(st_row_y(k % NPART) + pv_mix_y(h) + TY_TX->cap + 8 + 7));
@@ -836,7 +836,7 @@ static void pv_strip(uint32_t k)
     uint32_t sel = k == song.sel, mute = t->p[P_MUTE] != 0, arm = (song.rec >> k) & 1u, lvl = trk_level(k), sig;
     uint32_t hot = sel && ui.hot_t ? ui.hot_col + 1u : 0u;   /* 1 LEVEL, 2 PAN, 3 unused, 4 MUTE */
     int32_t pk = t->peak, m, pan = clamp(t->p[P_PAN], -64, 63), h = st_row_h(), y = st_row_y(k % NPART), top;
-    uint16_t tc = mute ? T_DIM : T_TRK(k), bg = ux_mix(T_BG, mute ? T_TRK(k) : tc, sel ? 24 : 11);
+    uint16_t tc = mute ? T_DIM : T_TRK(k), bg = pad_fill(mute ? T_TRK(k) : tc, (int)sel);   /* (Rumiboard: a pad) */
     const aafont_t *tf = TY_TX, *lf = TY_LB;
     int32_t T = pv_mix_y(h), ly = T + tf->cap + 8, cs = h >= 80 ? 34 : 26;
     char nm[20], b[12], d[2] = {(char)('1' + k), 0};
@@ -861,12 +861,7 @@ static void pv_strip(uint32_t k)
         for (uint32_t band = 0; band < (uint32_t)((uint32_t)sh); band += CV_MAX / (BOX_W)) {
             cv_begin_band(BOX_W,(uint32_t)sh,T_BG,band);
             cv_oy = -top;
-            if (sel) {
-                cv_rrect(0, 0, BOX_W, h, 8, mute ? T_DIM : T_TRK(k), T_BG);
-                cv_rrect(2, 2, BOX_W - 4, h - 4, 6, bg, mute ? T_DIM : T_TRK(k));
-            } else {
-                cv_rrect(0, 0, BOX_W, h, 8, bg, T_BG);
-            }
+            pad_rrect(BOX_W, h, (int)sel, mute ? T_DIM : T_TRK(k), bg);
             cv_rrect(6, h / 2 - cs / 2, cs, cs, 7, tc, bg);  /* the numeral */
             cv_text_c(6 + cs / 2, ty_y(h / 2, tf), tf, d, T_INK, tc);
             if (arm)

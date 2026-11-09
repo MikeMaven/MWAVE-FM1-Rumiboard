@@ -1311,6 +1311,22 @@ static void draw_text_box(uint32_t x, uint32_t y, uint32_t w, const aafont_t *f,
 {
     draw_text_line(x, y, w, f, s, c, T_BG, align);
 }
+/* Rumiboard pads (Home's rows, the Mixer's strips): the selected row a lit pad (its colour, outlined in it, pressed:
+ * no lip), the others rubber pads (the surface with a hint of the colour, raised on a darker 3 px lip). pad_fill: the
+ * fill the row's contents draw on; pad_rrect: the pad at 0,0 on T_BG, w x h, edge the lit pad's outline */
+#define PAD_LIP 3
+static uint16_t pad_fill(uint16_t c, int lit) { return lit ? ux_mix(T_BG, c, 28) : ux_mix(T_SURF, c, 7); }
+static void pad_rrect(int32_t w, int32_t h, int lit, uint16_t edge, uint16_t fill)
+{
+    if (lit) {
+        cv_rrect(0, 0, w, h, 8, edge, T_BG);
+        cv_rrect(2, 2, w - 4, h - 4, 6, fill, edge);
+    } else {
+        uint16_t lip = ux_mix(T_SURF, T_TEXT, 22);
+        cv_rrect(0, 0, w, h, 8, lip, T_BG);
+        cv_rrect(0, 0, w, h - PAD_LIP, 8, fill, lip);
+    }
+}
 /* Rumiboard's power-on logo (main.c, and the browser emulator's power-on): RUMI over BOARD in the large type,
  * one line being wider than the screen */
 static void draw_boot_logo(void)

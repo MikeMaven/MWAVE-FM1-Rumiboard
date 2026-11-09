@@ -455,7 +455,8 @@ static void stage_row(uint32_t k)
     st_lay_t lay = {4, 4, 1, 1, ST_PMIN, 0, 0};
     int32_t steps_row = h >= 80, showrole = 1;          /* (one, two tracks: the role under the name; three, four: beside it,
                                                          * at the right) */
-    uint16_t tc = mute ? T_DIM : T_TRK(k), bg = ux_mix(T_BG, tc, sel ? 24 : 11);   /* (the track's tint) */
+    /* (Rumiboard: a pad, gfx.c pad_rrect) */
+    uint16_t tc = mute ? T_DIM : T_TRK(k), bg = pad_fill(tc, (int)sel);
     const aafont_t *lf = TY_LB, *nf = h >= 80 ? TY_VL : TY_TX;
     char nm[24], line[48], more[48], ml[TL_MAX][32], d[3] = {(char)('1' + k), 0, 0}, role[16];
     char pt[4] = {'P', 0, 0, 0}, pn[4] = {'P', 0, 0, 0};
@@ -560,12 +561,7 @@ static void stage_row(uint32_t k)
         for (uint32_t band = 0; band < (uint32_t)(sh); band += CV_MAX / (BOX_W)) {
             cv_begin_band(BOX_W,sh,T_BG,band);
             cv_oy = -top;
-            if (sel) {                                      /* (the selected: outlined in its colour) */
-                cv_rrect(0, 0, BOX_W, h, 8, tc, T_BG);
-                cv_rrect(2, 2, BOX_W - 4, h - 4, 6, bg, tc);
-            } else {
-                cv_rrect(0, 0, BOX_W, h, 8, bg, T_BG);
-            }
+            pad_rrect(BOX_W, h, (int)sel, tc, bg);          /* (the selected: lit, outlined in its colour) */
             stage_rec_paint(0, 0, BOX_W, h, 8, lv);         /* armed: the red border */
             cv_rrect(6, h / 2 - cs / 2 - ny, cs, cs, 7, tc, bg);   /* the numeral */
             cv_text_c(6 + cs / 2, ty_y(h / 2 - ny, cs > 30 ? TY_VL : TY_TX), cs > 30 ? TY_VL : TY_TX, d, T_INK, tc);

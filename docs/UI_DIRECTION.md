@@ -74,11 +74,27 @@ Other touches:
 - Every new screen must pass the existing UI render tests (layout lint, MONO gray check,
   draw cost) in `tests/ui_render.c`.
 
-## 5. Order of work
+## 5. Sound families follow the palettes
+
+Sounds come in two families, named after the two palettes:
+
+- **RUMI**: the chill side. Sine-based keys and melodies, chillhop plucks and bendy leads,
+  felted piano, sub bass, ambient pads.
+- **1984**: the lofi house side (after nineteen84). Classic analog chord stabs, warm
+  gritty pads, punchy drums.
+
+Choosing a sound from one family switches the screen to that palette: a 1984 sound turns the screen
+dark, a RUMI sound turns it light. The sound browser shows the two families as
+separate sections. This is UI work (the browser and the palette switch), done before the sound
+design that fills the families.
+
+## 6. Order of work
 
 1. ✅ RUMI / 1984 palettes, RUMI as the default.
-2. Rebrand the visible strings (boot screen, About, package name) to Rumiboard, keeping the
-   Melodee/Felucca credits.
-3. Pad-style selection and lanes.
+2. ✅ Rebrand the power-on screen, About and the browser emulator to Rumiboard, keeping the
+   Melodee/Felucca credits. (Still Melodee: the USB / Bluetooth / MIDI device names and the
+   package identity; they change with the release setup.)
+3. ✅ Pad-style rows on Home and the Mixer (`gfx.c` `pad_fill` / `pad_rrect`); other lists next.
 4. One living visual (the sub-bass blob) as the pattern for the others.
-5. Mascot and transitions.
+5. RUMI / 1984 sound families in the browser, the palette following the chosen sound.
+6. Mascot and transitions.
