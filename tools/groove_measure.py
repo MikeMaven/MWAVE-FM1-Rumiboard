@@ -132,18 +132,33 @@ def measure(x, bpm=None):
             bpm = 60000 / beat
     sixteenth = beat / 4
     # hats play two interleaved beat-grids (on the beat, and the off-8ths); swing delays the off-8ths, so the
-    # straight set is the one the other sits late against; without swing, the set nearer the kicks is the beat
-    if anchor is hits["hats"] and len(hits["kick"]):
-        rel = (anchor - phase - beat / 2) / beat
-        other = anchor[np.abs(rel - np.round(rel)) * beat < beat / 4]
-        if len(other) >= 4:
-            o2 = other - phase - beat / 2
-            late = np.median(o2 - np.round(o2 / beat) * beat)       # the off-8th set against the midpoint
-            if late < -3 or (abs(late) <= 3 and np.median(np.abs(((hits["kick"] - phase) / beat + 0.5) % 1 - 0.5))
-                                               > np.median(np.abs(((hits["kick"] - phase - beat / 2 - late) / beat + 0.5) % 1 - 0.5))):
-                phase = (phase + beat / 2 + late) % beat
+    # straight set is the one the other sits late against; without swing, the set the kicks sit nearest is the beat
+    if anchor is hits["hats"]:
+        hist = np.zeros(int(round(beat)))
+        for t in anchor % beat:
+            hist[int(t) % len(hist)] += 1
+        hist = np.convolve(np.concatenate([hist[-4:], hist, hist[:4]]), np.ones(9), mode="same")[4:-4]
+        a = int(np.argmax(hist))
+        far = (np.arange(len(hist)) - a) % len(hist)
+        ring = np.where((far > len(hist) * 0.3) & (far < len(hist) * 0.7), hist, 0)
+        b = int(np.argmax(ring))
+        if ring[b] > hist[a] * 0.25:                     # a second set: b sits (b - a) after a
+            d_ab = (b - a) % len(hist) - len(hist) / 2   # positive: b is late against a's midpoint (b is the off-8th)
+            d_ba = (a - b) % len(hist) - len(hist) / 2
+            if d_ab > 3 and d_ba < -3: phase = a
+            elif d_ba > 3 and d_ab < -3: phase = b
+            elif len(hits["kick"]):                      # no swing to tell them apart: the kicks' nearer set
+                near = lambda ph: np.median(np.abs(((hits["kick"] - ph) / beat + 0.5) % 1 - 0.5))
+                phase = a if near(a) <= near(b) else b
+            else:
+                phase = a
+            phase = float(grid_phase(anchor[np.abs(((anchor - phase) / beat + 0.5) % 1 - 0.5) * beat < 25], beat))
     res = {"bpm": float(bpm), "pulse_ms": beat / 96, "anchor": "hats" if anchor is hits["hats"] else "kick", "elements": {}}
     for name, t in hits.items():
+        if name != "hats" and len(t) >= 8:               # the kick and the snare: their strong hits (a sampled chord's
+            o = strength[name]                           # transient reaches the snare band; the kick's tail the kick's)
+            st = np.array([o[int(h):int(h) + 20].max() for h in t])
+            t = t[st >= np.percentile(st, 40)]
         unit = beat / 2 if name == "snare" else sixteenth   # (a snare sits on 8ths: a 65 ms early one must not wrap)
         off, line = offsets(t, unit, phase)
         d = {"all": stats(off)}
