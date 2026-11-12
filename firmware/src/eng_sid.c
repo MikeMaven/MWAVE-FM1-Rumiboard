@@ -567,6 +567,11 @@ static const preset_t SID_PRESETS[] = {
     SIDP("LASER FX",    1, 2, 5, 82,  96,  8, 0,  0,   0, 78,  40, 69,   0, 1,  0,  0, 0, 30),
     SIDP("NOISE SWEEP", 0, 3, 0, 64,  40, 12, 1, 60,  63, 97,  40, 97,  50, 0,  0,  0, 0, 36),
     SIDP("DATA STORM",  1, 3, 1, 64,  80, 10, 0, 40,   0, 85,  60, 78,   0, 0,  0, 18, 0, 28),
+    /* the RUMI bank (Rumiboard, docs/VISION.md; reports/Lofi house and chillhop synth recipes.md) */
+    SIDP("RUMI ACID",   0, 1, 0, 64,  40, 12, 0, 30,   0, 70,   0, 40,  60, 1,  0,  0, 0,  0),   /* the "Winona" acid line:
+                                                         * a saw, a short squelch of the 6581's filter, a little drive */
+    SIDP("RUMI SUB BITE",1, 0, 7, 64,  30,  0, 0, 25,  44, 86, 110, 69,   0, 1,  0,  0, 0,  0),   /* VISION 1 with bite: a
+                                                         * triangle and its sub, a 25 ms attack, the 8580's drive */
 };
 #undef SIDP
 

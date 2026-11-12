@@ -70,10 +70,10 @@ def main():
     patches = records()
     lines = ["/* Generated from Sequential's unchanged v1.03 factory SysEx. */",
              "#pragma once",
-             f"#define P5_FACTORY_N {len(patches)}u",
+             f"#define P5_SEQUENTIAL_N {len(patches)}u",
              "/* All 200 programs are engine factory presets. Native user slots start empty. */"]
     lines += pack(patches)
-    lines.append("")
+    lines += ["#include \"prophet_rumi.h\"   /* Rumiboard: the RUMI bank's programs after these; P5_FACTORY_N counts both */", ""]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text("\n".join(lines + [""]))
     if args.web:

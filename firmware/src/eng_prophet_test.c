@@ -564,10 +564,15 @@ static void p5_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vm
     run(s,p,out,n,m,&c);
 }
 
-/* Sequential's factory program k (0..P5_FACTORY_N-1), unpacked (tools/gen_prophet_factory.py pack) */
+/* factory program k (0..P5_FACTORY_N-1): Sequential's, unpacked (tools/gen_prophet_factory.py pack), then the RUMI bank's */
 static void p5_factory(uint32_t k,p5_patch_t *p)
 {
     if(!RES_OK()){p5_patch_init(p);return;}         /* (res.c: the factory programs not installed) */
+    if(k>=P5_SEQUENTIAL_N){                         /* Rumiboard: the RUMI bank's programs (prophet_rumi.h), raw */
+        memcpy(p->raw,P5_RUMI[(k-P5_SEQUENTIAL_N)%P5_RUMI_N],P5_RAW_MAX);
+        p->size=P5_RAW_MAX;p->model=0x32;p->command=2;p->group=(uint8_t)(k/40u);p->program=(uint8_t)(k%40u);
+        return;
+    }
     const uint8_t *b=P5_FPACK+k*P5_FACTORY_BYTES;
     uint32_t pos=0;
     for(uint32_t i=0;i<P5_RAW_MAX;i++){

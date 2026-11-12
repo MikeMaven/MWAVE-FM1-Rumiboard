@@ -411,7 +411,7 @@ static void tone_test(void)
     /* corrupt records */
     wire.raw[PROJ_TONE_WIRE]=0;uint32_t hash=proj_hash(wire.raw,sizeof wire-4u);memcpy(wire.raw+sizeof wire-4u,&hash,4);assert(!proj_import(&proj_scratch,&wire,sizeof wire));
     wire.raw[PROJ_TONE_WIRE]=128;hash=proj_hash(wire.raw,sizeof wire-4u);memcpy(wire.raw+sizeof wire-4u,&hash,4);assert(!proj_import(&proj_scratch,&wire,sizeof wire));
-    wire.raw[PROJ_TONE_WIRE]=64;wire.raw[PROJ_LP_WIRE]=1;hash=proj_hash(wire.raw,sizeof wire-4u);memcpy(wire.raw+sizeof wire-4u,&hash,4);assert(!proj_import(&proj_scratch,&wire,sizeof wire));
+    wire.raw[PROJ_TONE_WIRE]=64;wire.raw[PROJ_LP_WIRE]=GROOVE_N;hash=proj_hash(wire.raw,sizeof wire-4u);memcpy(wire.raw+sizeof wire-4u,&hash,4);assert(!proj_import(&proj_scratch,&wire,sizeof wire));
     template_save();assert(tmpl_blob_valid((const uint8_t *)&tmpl,sizeof tmpl));
     tmpl.master[14]=0;assert(!tmpl_blob_valid((const uint8_t *)&tmpl,sizeof tmpl));
     tmpl.master[14]=64;tmpl.master[17]=1;assert(!tmpl_blob_valid((const uint8_t *)&tmpl,sizeof tmpl));

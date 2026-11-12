@@ -27,13 +27,15 @@ static const char *const PRESET_CAT[NENGINES] = {
     [5] = "PLBF",                                       /* VOICE: CHOIR AAH, VOX LEAD, WOW BASS, WHISPER */
     [11] = "FFFF",                                      /* NOISE */
 #endif
-    [3] = "OLBBBBBBLLLLLLLLPSPPGGKKUUERFFFF",          /* SID */
+    [3] = "OLBBBBBBLLLLLLLLPSPPGGKKUUERFFFF" "BB",     /* SID, then the RUMI bank (RUMI ACID, RUMI SUB BITE) */
     [10] = "DDDDDD",                                    /* DRUM: the kits (808, 909, SID, SID DIGI, CR78, FM) */
-    [12] = "KEBRPEGUKRBEEKGSPLUEWEBEO",                 /* FM6, INIT VOICE */
+    [12] = "KEBRPEGUKRBEEKGSPLUEWEBEO" "KKEPBK",        /* FM6, INIT VOICE, then the RUMI bank (eng_fm6_rumi.h: TINES
+                                                         * SINE BELL HAZE SUB FELT) */
     [ENGI_CZ] = "ORRRSSSSSUUUBBBBURWSWWWWUKKKKKKKKGGGGGPPPEEEEEDEESSULLLLFDDDEFFFF",   /* INIT TONE, Casio's 64 */
     [ENGI_PROPHET] =                                    /* INIT, Sequential's 200 */
         "OOOKBPROOOGKLPWPOLOUUBEOEGFPOOBOEOOODDDEOOGKSGBPEPPLBROOOOPOKPKOFOSOOEPRODFLFOOEOULWOPBOLOPKFORGLPOBULROOSKOO"
-        "PSBUEFDEEEWEUOUEOOOOSERPUOBOOOBOFLGUGRLOOOBUFOOFEUFORSKKWKLGLGGKROGBGLKSLOOFOFOFLUUEFFEOFEPF",
+        "PSBUEFDEEEWEUOUEOOOOSERPUOBOOOBOFLGUGRLOOOBUFOOFEUFORSKKWKLGLGGKROGBGLKSLOOFOFOFLUUEFFEOFEPF"
+        P5_RUMI_CAT,                                    /* then the RUMI bank (prophet_rumi.h) */
 };
 static uint32_t cat_of_engine(uint32_t e) { return e == ENGI_DRUM ? CAT_DRUM : e == 11u ? CAT_FX : CAT_OTHER; }
 static uint32_t preset_cat(uint32_t e, uint32_t k)           /* factory preset k of engine e */
@@ -51,6 +53,7 @@ static uint32_t preset_cat(uint32_t e, uint32_t k)           /* factory preset k
 static const struct { uint8_t cat; const char *w; } CAT_WORDS[] = {
     {CAT_KEYS, "PIANO"}, {CAT_KEYS, "EP|"}, {CAT_KEYS, "E.P"}, {CAT_KEYS, "TINE"}, {CAT_KEYS, "WURL"},
     {CAT_KEYS, "CLAV"}, {CAT_KEYS, "HARPSI"}, {CAT_KEYS, "KEYS"}, {CAT_KEYS, "HONKY"}, {CAT_KEYS, "RHODES"},
+    {CAT_KEYS, "FELT"}, {CAT_KEYS, "SINE"}, {CAT_PAD, "HAZE"},
     {CAT_ORGAN, "ORGAN"}, {CAT_ORGAN, "DRAWBAR"}, {CAT_ORGAN, "HARMONIUM"}, {CAT_ORGAN, "ACCORDION"},
     {CAT_ORGAN, "LESLIE"}, {CAT_ORGAN, "CHURCH"},
     {CAT_BELL, "BELL"}, {CAT_BELL, "STEEL DRUM"}, {CAT_BELL, "TUNED"}, {CAT_BELL, "MARIMBA"}, {CAT_BELL, "XYLO"},
@@ -60,7 +63,7 @@ static const struct { uint8_t cat; const char *w; } CAT_WORDS[] = {
     {CAT_DRUM, "DRUM"}, {CAT_DRUM, "KIT|"}, {CAT_DRUM, "PERC"}, {CAT_DRUM, "CONGA"}, {CAT_DRUM, "BONGO"},
     {CAT_DRUM, "TAIKO"}, {CAT_DRUM, "HAT"}, {CAT_DRUM, "TIMPAN"}, {CAT_DRUM, "TOM|"}, {CAT_DRUM, "SNARE"},
     {CAT_DRUM, "KICK"}, {CAT_DRUM, "CLAP"}, {CAT_DRUM, "808"}, {CAT_DRUM, "909"},
-    {CAT_BASS, "BASS"}, {CAT_BASS, "SUB|"},
+    {CAT_BASS, "BASS"}, {CAT_BASS, "SUB|"}, {CAT_BASS, "REESE"}, {CAT_BASS, "ACID"},
     {CAT_LEAD, "LEAD"}, {CAT_LEAD, "LD|"}, {CAT_LEAD, "SOLO"}, {CAT_LEAD, "SYNC"}, {CAT_LEAD, "GLIDE"},
     {CAT_PAD, "PAD"}, {CAT_PAD, "CHOIR"}, {CAT_PAD, "CHORAL"}, {CAT_PAD, "VOICE"}, {CAT_PAD, "VOCAL"},
     {CAT_PAD, "VOX"}, {CAT_PAD, "AAH"}, {CAT_PAD, "SWELL"}, {CAT_PAD, "DREAM"}, {CAT_PAD, "DRONE"}, {CAT_PAD, "ATMOS"},
@@ -302,9 +305,10 @@ static uint32_t list_scan(uint32_t m, uint32_t ws, uint32_t wk, uint32_t n, uint
         for (seg = 0; seg < LSEG_USER; seg++) {
             uint32_t len = lseg_len(seg), slot = seg & 1u, init;
             src = lseg_src(seg);
-            init = slot || !len ? 0u : preset_init(src);   /* (an engine's INIT first: FM6's comes after F24) */
+            init = slot || !len ? 0u : preset_init(src);   /* (an engine's INIT first: FM6's comes after F24, before
+                                                             * the RUMI bank; the rest keep their order) */
             for (i = 0; i < len; i++) {
-                k = (i + init) % len;
+                k = !init ? i : !i ? init : i <= init ? i - 1u : i;
                 if (slot && (!up_used(k) || up_engine(k)!=eng_vis(seg/2u)))
                     continue;
                 if (!list_keep(m, src, k))

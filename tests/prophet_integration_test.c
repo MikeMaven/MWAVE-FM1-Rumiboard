@@ -40,7 +40,7 @@ int main(int argc,char **argv)
     bad+=check("project embeds the complete native record without a user-slot dependency",proj_pack(&wire,&saved)&&proj_import(&readback,&wire,sizeof wire)&&!memcmp(&readback.p5[0],&p,sizeof p));
     bad+=check("project restore returns native bytes after changing the current patch",(p5_patch[0].raw[97]=0,!project_restore_runtime(&readback)&&!memcmp(p5_patch_of(t),&p,sizeof p)));
     uint32_t total;
-    bad+=check("project restore resumes Prophet browsing at native P128",!t->user_native&&t->user==128u&&preset_all_pos(&total)==328u&&total>=201u+128u);
+    bad+=check("project restore resumes Prophet browsing at native P128",!t->user_native&&t->user==128u&&preset_all_pos(&total)==P5_FACTORY_N+128u&&total>=P5_FACTORY_N+1u+128u);
     p5_patch[0].raw[97]^=1u;project_capture(&saved);
     bad+=check("new projects retain a native origin even after the live patch was edited",proj_pack(&wire,&saved)&&proj_import(&readback,&wire,sizeof wire)&&!project_restore_runtime(&readback)&&!t->user_native&&t->user==128u);
     apply_preset_to(t,200u);project_capture(&saved);

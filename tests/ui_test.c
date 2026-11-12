@@ -5214,7 +5214,7 @@ static int test_prophet_pages(void)
     ui_power_on();set_engine_of(TSEL,ENGI_PROPHET);int bad=0,visible=0;
     bad+=check("selecting Prophet starts on its first factory program",!TSEL->user&&TSEL->preset==1u&&!memcmp(p5_patch_of(TSEL),p5_fac(0),sizeof(p5_patch_t)));
     uint32_t count,slot,source=preset_all_at(200u,&slot);
-    bad+=check("all 201 Prophet factory entries lead the browser",preset_all_pos(&count)==1u&&ENGINES[ENGI_PROPHET]->npresets==201u&&source==ENGI_PROPHET&&slot==200u);
+    bad+=check("all the Prophet factory entries (Sequential's 200, the RUMI bank) lead the browser",preset_all_pos(&count)==1u&&ENGINES[ENGI_PROPHET]->npresets==P5_FACTORY_N+1u&&source==ENGI_PROPHET&&slot==200u);
     int factory=ENGINES[ENGI_PROPHET]->npresets==P5_FACTORY_N+1u;
     for(uint32_t k=1;k<=P5_FACTORY_N;k++){
         apply_preset_to(TSEL,k);char name[21];p5_patch_name(name,p5_fac(k-1u));

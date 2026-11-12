@@ -246,7 +246,7 @@ int main(void)
     int32_t out[CTL];
     static int32_t buf[FS * 2];
     check("engine 3 keeps its stored ID and is named SID", ENGINES[3] == &ENG_SID && !strcmp(ENG_SID.name, "SID"));
-    check("32 uniquely named factory presets", ENG_SID.npresets == 32u && unique_presets());
+    check("34 uniquely named factory presets (Melodee's 32, the RUMI bank's 2)", ENG_SID.npresets == 34u && unique_presets());
 
     /* noise */
     check("noise register: all ones read out as 0xFF0 (the low four DAC bits grounded)", sid_noise_bits(0x7fffffu) == 0xff0u);

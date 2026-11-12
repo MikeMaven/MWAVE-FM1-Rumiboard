@@ -947,9 +947,20 @@ int main(int argc, char **argv)
             if (f > FS * 9 / 10 && f < FS * 12 / 10) n |= 1u << 14;
             fm1_in.notes = getenv("STEPS") ? 0u : n;   /* STEPS: only the sequencer plays */
         }
-        if (nk) {                       /* keys held 0.1-1.5 s (C E G B, then D F A C) */
-            static const uint8_t K[8] = {7, 11, 14, 18, 9, 12, 16, 19};
+        if (nk) {                       /* keys held 0.1-1.5 s (C E G B, then D F A C; KEYS=k,k,..: these keys) */
+            static uint8_t K[8] = {7, 11, 14, 18, 9, 12, 16, 19};
+            static int keys_read;
             uint32_t n = 0, k;
+            if (getenv("KEYS") && !keys_read) {         /* (Rumiboard: a voicing of up to CHORD keys, 7 = C4) */
+                const char *s = getenv("KEYS");
+                int v, c;
+                for (k = 0; k < 8u && sscanf(s, "%d%n", &v, &c) == 1; k++) {
+                    K[k] = (uint8_t)(v & 31);
+                    s += c;
+                    if (*s == ',') s++;
+                }
+                keys_read = 1;
+            }
             for (k = 0; k < nk && k < 8u; k++)
                 n |= 1u << K[k];
             fm1_in.notes = (fp > FS / 10 && fp < FS * 3 / 2) ? n : 0;
