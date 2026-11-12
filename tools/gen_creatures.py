@@ -40,12 +40,13 @@ PATCHES = {
 }
 # Single frames that replace a sheet's pose (0 .. 3): an image of one figure, possibly inside a mock of the screen
 # (docs/creatures/refs/frames/), or (path, (fx0, fy0, fx1, fy1)): that part of the image, as fractions (an image
-# holding two mocks side by side: the left half, the right half). The figure is the largest connected piece whose
-# pixels are mostly the creature's colours (a drawn device frame and text are dark) and whose box spans less than
-# 90 % of the (part of the) image's width.
+# holding two mocks side by side: the left half, the right half), or (path, box, scale): drawn at that fraction of
+# the fit (a frame from another image has its own scale: the terrier's squash, fitted, was half as big again as its
+# idle). The figure is the largest connected piece whose pixels are mostly the creature's colours (a drawn device
+# frame and text are dark) and whose box spans less than 90 % of the (part of the) image's width.
 FRAMES = {
     "bass_anglerfish": {1: "docs/creatures/refs/frames/bass_anglerfish_2.jpg"},
-    "stab_bulldog": {1: ("docs/creatures/refs/frames/stab_bulldog_ab.jpg", (0, 0, 0.5, 1)),      # A: the squash
+    "stab_bulldog": {1: ("docs/creatures/refs/frames/stab_bulldog_ab.jpg", (0, 0, 0.5, 1), 0.85),   # A: the squash
                      2: ("docs/creatures/refs/frames/stab_bulldog_ab.jpg", (0.5, 0, 1, 1))},     # B: the launch
     "pluck_chameleon": {1: ("docs/creatures/refs/frames/pluck_chameleon_ab.jpg", (0, 0, 0.5, 1)),   # A: the snap
                         2: ("docs/creatures/refs/frames/pluck_chameleon_ab.jpg", (0.5, 0, 1, 1))},  # B: the reach
@@ -62,11 +63,14 @@ PANELS = {"master_snail": [(136, 300, 756, 740), (756, 300, 1392, 740), (1392, 3
 # all four (the smallest that fits), the figure at the left margin, so the creature keeps its size and place and
 # only the extras change. Other sheets: each pose fitted and centred on its own.
 ANCHOR_LEFT = {"master_snail"}
+# The side margin of a sheet's poses (px), 2 by default: a creature as wide as the canvas (the fish) gets room to
+# lunge in (ui_creature.c moves a pose by a few px, within its frame's extent: CR_SPR_X0 / X1).
+MARGIN = {"bass_anglerfish": 6}
 
 
 def frame_image(spec):
     """a FRAMES entry's image: the file, or the part of it"""
-    path, box = (spec, None) if isinstance(spec, str) else spec
+    path, box = (spec, None) if isinstance(spec, str) else spec[:2]
     fim = Image.open(path).convert("RGB")
     if box:
         w, h = fim.size
@@ -321,7 +325,7 @@ def main():
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     rows = []
-    blob, offs, palettes = bytearray(), [], []
+    blob, offs, palettes, extents = bytearray(), [], [], []
     for name in SHEETS:
         im = Image.open(Path(a.refs) / f"{name}.jpg").convert("RGB")
         bg = im.getpixel((8, 8))
@@ -334,21 +338,25 @@ def main():
         prev = Image.new("RGB", (a.w * 4, a.h), BG_RGB)
         order = ORDER.get(name, [0, 1, 2, 3])
         poses = []
+        margin = MARGIN.get(name, 2)
         for k in range(4):
             x0, y0, x1, y1 = boxes[order[k]] if order[k] < len(boxes) else boxes[-1]
             pose = im.crop((x0, y0, x1, y1))
-            fbg = bg
+            fbg, scale = bg, 1
             if k in FRAMES.get(name, {}):              # a frame of its own replaces this pose
-                fim = frame_image(FRAMES[name][k])
+                spec = FRAMES[name][k]
+                fim = frame_image(spec)
                 fbg = fim.getpixel((8, 8))
                 pose = fim.crop(find_figure(fim, fbg, cols))
-            poses.append((pose, fbg))
-        fit = [min((a.w - 4) / p.width, (a.h - 4) / p.height) for p, _ in poses]   # each pose's scale to fit, a 2 px margin
+                if not isinstance(spec, str) and len(spec) > 2: scale = spec[2]
+            poses.append((pose, fbg, scale))
+        fit = [min((a.w - 2 * margin) / p.width, (a.h - 4) / p.height) for p, _, _ in poses]   # each pose's scale to fit
         if name in ANCHOR_LEFT:
             fit = [min(fit)] * 4
-        for k, (pose, fbg) in enumerate(poses):
-            if name in ANCHOR_LEFT:
-                pose = pose.resize((max(1, round(pose.width * fit[k])), max(1, round(pose.height * fit[k]))), Image.BOX)
+        for k, (pose, fbg, scale) in enumerate(poses):
+            if name in ANCHOR_LEFT or scale != 1 or margin != 2:
+                sc = fit[k] * scale
+                pose = pose.resize((max(1, round(pose.width * sc)), max(1, round(pose.height * sc))), Image.BOX)
             else:
                 pose.thumbnail((a.w - 4, a.h - 4), Image.BOX)
             ox = k * a.w + (2 if name in ANCHOR_LEFT else (a.w - pose.width) // 2)
@@ -363,18 +371,26 @@ def main():
             roles = drop_trail_ends(roles, a.w, a.h)
         rp = roles.load()
         edited = Path(a.out) / "edits" / f"{name}.png"    # a hand-edited copy of the preview (any whole scale): the
-        if edited.exists():                                # truth for this creature; the sheet's patches do not apply
-            e = Image.open(edited).convert("RGB")
+        from_edit = [False] * 4                            # truth for the frames it draws (a frame left blank, all
+        if edited.exists():                                # background, is the sheet's); the sheet's patches do not
+            e = Image.open(edited).convert("RGB")          # apply to an edited frame
             sc = e.width // (a.w * 4)
             e = e.resize((a.w * 4, a.h), Image.NEAREST) if sc > 1 else e
             ep = e.load()
-            for y in range(a.h):
-                for x in range(a.w * 4):
-                    rp[x, y] = min(role_rgb, key=lambda r: dist(ep[x, y], role_rgb[r]))
-            print(f"  {name}: from the edited {edited}")
-        for patch in ([] if edited.exists() else PATCHES.get(name, [])):
+            for k in range(4):
+                fr = [[min(role_rgb, key=lambda r: dist(ep[x, y], role_rgb[r])) for x in range(k * a.w, (k + 1) * a.w)]
+                      for y in range(a.h)]
+                if not any(r not in (0, 4, 7) for row in fr for r in row):
+                    continue
+                from_edit[k] = True
+                for y in range(a.h):
+                    for x in range(a.w):
+                        rp[k * a.w + x, y] = fr[y][x]
+            print(f"  {name}: frames {[k for k in range(4) if from_edit[k]]} from the edited {edited}")
+        for patch in PATCHES.get(name, []):
             op, poses = patch[0], patch[1]
             for k in (range(4) if poses is None else poses):
+                if from_edit[k]: continue
                 if op == "fill":
                     _, _, x0, y0, x1, y1, from_roles, to_role = patch
                     for y in range(y0, y1):
@@ -395,9 +411,11 @@ def main():
         palettes.append([to565(role_rgb[r]) for r in range(8)])
         roles.save(Path(a.out) / f"{name}.roles.png")
         frames = [rle(roles.crop((k * a.w, 0, (k + 1) * a.w, a.h))) for k in range(4)]
-        for fr in frames:
+        for k, fr in enumerate(frames):
             offs.append(len(blob))
             blob += fr
+            xs = [x for y in range(a.h) for x in range(a.w) if rp[k * a.w + x, y] not in (0, 4, 7)]
+            extents.append((min(xs), max(xs)) if xs else (0, a.w - 1))
         print(f"  compressed: {[len(f) for f in frames]} B, {sum(len(f) for f in frames)} B for the four poses")
         prev.resize((prev.width * 4, prev.height * 4), Image.NEAREST).save(Path(a.out) / f"{name}.png")
         rows.append(prev)
@@ -417,6 +435,8 @@ def main():
                  "#pragma once", "#include <stdint.h>",
                  f"#define CR_SPR_W {a.w}", f"#define CR_SPR_H {a.h}", f"#define CR_SPR_CREATURES {len(SHEETS)}", "#define CR_SPR_POSES 4",
                  "static const uint16_t CR_SPR_OFF[CR_SPR_CREATURES * CR_SPR_POSES + 1] = {" + ", ".join(str(o) for o in offs) + "};",
+                 "static const uint8_t CR_SPR_X0[CR_SPR_CREATURES * CR_SPR_POSES] = {" + ", ".join(str(x0) for x0, _ in extents) + "};   /* each frame's leftmost and rightmost drawn column (the motion stays in the canvas) */",
+                 "static const uint8_t CR_SPR_X1[CR_SPR_CREATURES * CR_SPR_POSES] = {" + ", ".join(str(x1) for _, x1 in extents) + "};",
                  "static const uint16_t CR_SPR_COLS[CR_SPR_CREATURES][8] = {" + ", ".join("{" + ", ".join(f"0x{c:04x}" if r not in (0, 4, 7) else "0" for r, c in enumerate(p)) + "}" for p in palettes) + "};",
                  f"static const uint8_t MELODEE_RES CR_SPR[{len(blob)}] = {{"]
         for i in range(0, len(blob), 24):

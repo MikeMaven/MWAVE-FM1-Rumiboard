@@ -331,6 +331,8 @@ static void creature_draw_canvas(uint32_t kind, int32_t w, int32_t h)
         if (kind == CR_OCTOPUS) dy = t < 2 ? 3 : t < 5 ? 1 : 0;
         if (kind == CR_SNAIL) dx = t < 3 ? -t : t < 9 ? -3 + (t - 3) / 2 : 0;   /* (a recoil at the tear) */
     }
+    if (dx > (int32_t)CR_SPR_W - 1 - (int32_t)CR_SPR_X1[i]) dx = (int32_t)CR_SPR_W - 1 - (int32_t)CR_SPR_X1[i];   /* (the
+    if (dx < -(int32_t)CR_SPR_X0[i]) dx = -(int32_t)CR_SPR_X0[i];      * move stays in the canvas: a wide pose moves less) */
     cv_sprite(dx, dy, CR_SPR + CR_SPR_OFF[i], CR_SPR_OFF[i + 1] - CR_SPR_OFF[i], CR_SPR_W, CR_SPR_H, cols);
     (void)w; (void)h;
 }

@@ -16,3 +16,7 @@ How to edit one:
    prints `from the edited ...` for the creature it took from here.
 
 A frame is 120 x 88 device pixels (shown 4x); the creature stands on row 86.
+
+Edit only the frames you want: a frame left blank (all background) in your copy is taken from the sheet as
+usual, so the tool's own improvements to that frame still reach the device. The bulldog's edit here is its
+idle frame alone.
