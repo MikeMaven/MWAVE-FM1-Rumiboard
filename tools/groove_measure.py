@@ -99,7 +99,7 @@ def stats(v):
     return {"n": int(len(v)), "median_ms": float(np.median(v)), "iqr_ms": float(q3 - q1), "mean_ms": float(np.mean(v))}
 
 
-def measure(x, bpm=None):
+def measure(x, bpm=None, anchor_name="auto"):
     bands = {"kick": (band(x, 40, 120), 8, 150, 0.25), "snare": (band(x, 150, 600) + 0.5 * band(x, 1500, 5000), 4, 150, 0.3),
              "hats": (band(x, 7000, None), 2, 60, 0.2)}
     hits, onsets, strength = {}, [], {}
@@ -108,6 +108,16 @@ def measure(x, bpm=None):
         hits[name] = pick(o, e, gap, th)
         strength[name] = o
         onsets.append(o / (o.max() or 1))
+    # a hat is a hit whose energy is in the top band: a vocal's sibilant or a guitar's strum has as much in the
+    # middle; keep the hat-band hits whose top band is at least as strong as the middle band in their first 20 ms
+    if len(hits["hats"]):
+        top, mid = np.abs(band(x, 7000, None)), np.abs(band(x, 500, 4000))
+        hop = SR // 1000
+        keep = []
+        for t in hits["hats"]:
+            i = int(t) * hop
+            keep.append(top[i:i + 20 * hop].mean() >= 0.4 * mid[i:i + 20 * hop].mean())
+        hits["hats"] = hits["hats"][np.array(keep, dtype=bool)]
     # a kick's click reaches the snare band: a weak snare-band hit within 12 ms of a kick is the kick
     if len(hits["snare"]) and len(hits["kick"]):
         o = strength["snare"]
@@ -119,7 +129,17 @@ def measure(x, bpm=None):
         bpm = estimate_bpm(sum(onsets))
     beat = 60000 / bpm
     # the grid: anchored on the hats (8ths: the straight element); hats absent, on the kick's downbeats
-    anchor = hits["hats"] if len(hits["hats"]) >= 8 else hits["kick"]
+    # the grid's anchor: the hats (Charnas: Dilla's straight element) when they are found cleanly, else the snare
+    # (the backbeat, the clearest hits in a mix: then the readings are relative to the snare, hats included)
+    if anchor_name == "auto":
+        anchor_name = "hats" if len(hits["hats"]) >= 8 else "snare"
+        if anchor_name == "hats":
+            ph = grid_phase(hits["hats"], beat)
+            d = ((hits["hats"] - ph) / beat + 0.5) % 1 - 0.5
+            on = np.abs(d) * beat < 40
+            if on.sum() < 8 or np.percentile(np.abs(d[on]) * beat, 75) > 15:
+                anchor_name = "snare"
+    anchor = hits[anchor_name]
     phase = grid_phase(anchor, beat)
     # the tempo refined: a line through the anchor hits on the beat (their index against their time)
     for _ in range(2):
@@ -133,7 +153,7 @@ def measure(x, bpm=None):
     sixteenth = beat / 4
     # hats play two interleaved beat-grids (on the beat, and the off-8ths); swing delays the off-8ths, so the
     # straight set is the one the other sits late against; without swing, the set the kicks sit nearest is the beat
-    if anchor is hits["hats"]:
+    if anchor_name == "hats":
         hist = np.zeros(int(round(beat)))
         for t in anchor % beat:
             hist[int(t) % len(hist)] += 1
@@ -153,7 +173,7 @@ def measure(x, bpm=None):
             else:
                 phase = a
             phase = float(grid_phase(anchor[np.abs(((anchor - phase) / beat + 0.5) % 1 - 0.5) * beat < 25], beat))
-    res = {"bpm": float(bpm), "pulse_ms": beat / 96, "anchor": "hats" if anchor is hits["hats"] else "kick", "elements": {}}
+    res = {"bpm": float(bpm), "pulse_ms": beat / 96, "anchor": anchor_name, "elements": {}}
     for name, t in hits.items():
         if name != "hats" and len(t) >= 8:               # the kick and the snare: their strong hits (a sampled chord's
             o = strength[name]                           # transient reaches the snare band; the kick's tail the kick's)
@@ -181,6 +201,10 @@ def report(res):
             print(f"{name:8} {where:8} {s['n']:5d} {s['median_ms']:+10.1f} {s['median_ms'] / p:+7.1f} {s['iqr_ms']:10.1f}")
         if "swing_pct" in d:
             print(f"{name:8} swing (off-8th delay) {d['swing_pct']:.1f} %")
+    e = res["elements"]
+    if e["kick"].get("on_beat") and e["snare"].get("on_beat"):
+        d = e["kick"]["on_beat"]["median_ms"] - e["snare"]["on_beat"]["median_ms"]
+        print(f"kick after the snare / clap (anchor-free): {d:+.1f} ms, {d / p:+.1f} pulses")
     print("negative = early, positive = late, against the straight 16th grid; the bass needs its own stem")
 
 
@@ -225,12 +249,13 @@ def main():
     ap.add_argument("--end", type=float)
     ap.add_argument("--json")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--anchor", default="auto", choices=["auto", "hats", "snare", "kick"], help="the grid's anchor element")
     a = ap.parse_args()
     if a.selftest:
         sys.exit(selftest())
     if not a.track:
         ap.error("a track, or --selftest")
-    res = measure(load(a.track, a.start, a.end), a.bpm)
+    res = measure(load(a.track, a.start, a.end), a.bpm, a.anchor)
     report(res)
     if a.json:
         with open(a.json, "w") as f:
