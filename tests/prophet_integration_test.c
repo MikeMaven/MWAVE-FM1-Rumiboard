@@ -44,7 +44,7 @@ int main(int argc,char **argv)
     p5_patch[0].raw[97]^=1u;project_capture(&saved);
     bad+=check("new projects retain a native origin even after the live patch was edited",proj_pack(&wire,&saved)&&proj_import(&readback,&wire,sizeof wire)&&!project_restore_runtime(&readback)&&!t->user_native&&t->user==128u);
     apply_preset_to(t,200u);project_capture(&saved);
-    bad+=check("project restore resumes at the last of all 200 factory programs",proj_pack(&wire,&saved)&&proj_import(&readback,&wire,sizeof wire)&&!project_restore_runtime(&readback)&&!t->user&&t->preset==200u&&preset_all_pos(&total)==200u);
+    bad+=check("project restore resumes at the last of all 200 factory programs",proj_pack(&wire,&saved)&&proj_import(&readback,&wire,sizeof wire)&&!project_restore_runtime(&readback)&&!t->user&&t->preset==200u&&preset_all_pos(&total)==P5_RUMI_N+200u);   /* (the RUMI bank leads the list) */
     apply_preset_to(t,0u);project_capture(&saved);saved.p5[0]=*p5_fac(199);saved.t[0].preset=0;*proj_p5_origin(&saved,0)=0;saved.sum=proj_sum(&saved);
     uint32_t origin_at=68u+NPART*(P_COUNT+2u+NSTEP*9u)+sizeof saved.chain+sizeof saved.motion;
     proj_pack(&wire,&saved);wire.raw[origin_at]=wire.raw[origin_at+1u]=0u;

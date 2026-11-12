@@ -2,8 +2,10 @@
 
 The core palette of docs/VISION.md §2, built on the engines this firmware ships (the Prophet, FM6, SID; TRIO and
 PHYS are retired in Melodee 1.6, `core.h MELODEE_LEGACY_EXTRAS 0`), from the recipes in
-`reports/Lofi house and chillhop synth recipes.md`. They sit after each engine's factory sounds in its preset list
-and are named `RUMI ...`, so PRESETS > LIST finds them by category and by name. Each is dry: the shared rack
+`reports/Lofi house and chillhop synth recipes.md`. They lead each engine's list in the browser (the PRESETS knob, LIST, the ENGINE knob's landing sound), then
+the engine's INIT, then Melodee's factory sounds in their order; their stored numbers come after the factory
+sounds, so saved projects and favorites keep meaning. They are named `RUMI ...`, so LIST finds them by category
+and by name too. Each is dry: the shared rack
 makes the lofi of it (the report's chain: slot 1 CHORUS MIX 50 DEPTH 60–70 at a slow RATE for the Juno feel,
 slot 2 TAPE CHARACTER 32–40 MIX 60, slot 3 ROOM MIX 20–30 SIZE 50 DECAY 50 TONE −8; CRUSH BITS 12 when crunch
 matters more than chorus).
@@ -25,7 +27,7 @@ matters more than chorus).
 | RUMI ACID | SID 33 | — | the "Winona" acid line: a saw, a short squelch of the 6581's filter, a little drive; mono |
 | RUMI SUB BITE | SID 34 | 1 | the sub with bite: a triangle and its sub, a 25 ms attack, the 8580's drive; mono |
 
-Preset numbers are the browser's (INIT first). The Prophet's RUMI programs follow Sequential's 200
+Preset numbers are the stored ones (the engine's own count). The Prophet's RUMI programs follow Sequential's 200
 (`tools/gen_prophet_rumi.py` → `firmware/src/prophet_rumi.h`, raw 133-byte programs; `p5_factory` serves them,
 `P5_FACTORY_N` counts both banks, at most 207 for the favorites bitmap); FM6's follow INIT VOICE
 (`firmware/src/eng_fm6_rumi.h`, the ROM voice macros); SID's are rows of `eng_sid.c SID_PRESETS`. Their browser

@@ -281,6 +281,27 @@ static int list_keep(uint32_t m, uint32_t src, uint32_t k)
  * *as, *ak (USER_GENERAL, UP_SLOTS past the end). The segments: 2 per engine in ENGINE_ORDER (factory, native), then
  * the user presets */
 #define LSEG_USER (2u * NENG_SHOWN)
+/* the first of an engine's RUMI bank (Rumiboard's own sounds, stored after its factory presets): they lead its list
+ * (lseg_k), then INIT, then the factory presets in their order; npresets: no bank */
+static uint32_t preset_rumi_first(uint32_t e)
+{
+    return e == ENGI_PROPHET ? P5_SEQUENTIAL_N + 1u : e == ENGI_FM6 ? FM6_NFAC + 1u : e == 3u ? SID_RUMI_FIRST
+         : ENGINES[e % NENGINES]->npresets;
+}
+/* the engine's first sound: the RUMI bank's first, else (the Prophet) Sequential's first program, else preset 0 */
+static uint32_t preset_first(uint32_t e)
+{
+    uint32_t r = preset_rumi_first(e);
+    return r < ENGINES[e % NENGINES]->npresets ? r : e % NENGINES == ENGI_PROPHET ? 1u : 0u;
+}
+/* list entry i of an engine's len presets whose RUMI bank starts at first and whose INIT is init */
+static uint32_t lseg_k(uint32_t i, uint32_t len, uint32_t first, uint32_t init)
+{
+    uint32_t nr = first < len ? len - first : 0u;
+    if (i < nr) return first + i;
+    i -= nr;
+    return !init ? i : !i ? init : i <= init ? i - 1u : i;
+}
 static uint32_t lseg_src(uint32_t seg){return seg&1u?USER_GENERAL:eng_vis(seg/2u);}
 static uint32_t lseg_len(uint32_t seg){return seg&1u?UP_SLOTS:ENGINES[eng_vis(seg/2u)]->npresets;}
 static uint32_t list_scan(uint32_t m, uint32_t ws, uint32_t wk, uint32_t n, uint32_t *as, uint32_t *ak,
@@ -305,10 +326,10 @@ static uint32_t list_scan(uint32_t m, uint32_t ws, uint32_t wk, uint32_t n, uint
         for (seg = 0; seg < LSEG_USER; seg++) {
             uint32_t len = lseg_len(seg), slot = seg & 1u, init;
             src = lseg_src(seg);
-            init = slot || !len ? 0u : preset_init(src);   /* (an engine's INIT first: FM6's comes after F24, before
-                                                             * the RUMI bank; the rest keep their order) */
+            init = slot || !len ? 0u : preset_init(src);   /* (an engine's RUMI bank first, then its INIT, then the
+                                                             * factory presets in their order: lseg_k) */
             for (i = 0; i < len; i++) {
-                k = !init ? i : !i ? init : i <= init ? i - 1u : i;
+                k = slot ? i : lseg_k(i, len, preset_rumi_first(src), init);
                 if (slot && (!up_used(k) || up_engine(k)!=eng_vis(seg/2u)))
                     continue;
                 if (!list_keep(m, src, k))

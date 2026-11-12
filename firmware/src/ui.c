@@ -1086,8 +1086,10 @@ static void engine_load_of(track_t *t, uint32_t ei, uint32_t pi)
     fm1_irq_on();
     load_end(t);
 }
-/* the engine's defaults and its first preset (PROPHET: Sequential's first factory program, not INIT) */
-static void set_engine_of(track_t *t, uint32_t ei) { engine_load_of(t, ei, ei % NENGINES == ENGI_PROPHET ? 1u : 0u); }
+/* the engine's defaults and its first sound in the browser (browse.c preset_first: its RUMI bank's first, else the
+ * PROPHET's first Sequential program, not INIT, else preset 0) */
+static uint32_t preset_first(uint32_t e);
+static void set_engine_of(track_t *t, uint32_t ei) { engine_load_of(t, ei, preset_first(ei)); }
 
 /* the engine's own starting point, nothing changed: its INIT preset (Prophet, CZ-1, SID, FM6: "INIT .."), else
  * its first (DRUM: the 808 kit) */

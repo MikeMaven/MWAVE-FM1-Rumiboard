@@ -2216,7 +2216,7 @@ static int test_init_scales_patterns(void)
     track_t *t;
     ui_power_on();
     set_engine_of(TSEL, ENGI_FM6);
-    ok = TSEL->preset == 0u;
+    ok = TSEL->preset == FM6_NFAC + 1u;                 /* (the engine's first sound: the RUMI bank's) */
     TSEL->p[P_E0] = 5;
     sound_init_of(TSEL, ENGI_FM6);
     fm6_name(nm, fm6_patch_of(song.sel));
@@ -2249,8 +2249,14 @@ static int test_init_scales_patterns(void)
     bad += check("..INIT VOICE first in FM6's sounds: KNOB 2 on, F1; back: INIT VOICE", ok && TSEL->eng_req == ENGI_FM6 &&
                  TSEL->preset == FM6_NFAC);
     turn(EN_K2, -1);
-    bad += check("..back again: the Prophet's last program", TSEL->eng_req == ENGI_PROPHET &&
-                 TSEL->preset == ENGINES[ENGI_PROPHET]->npresets - 1u);
+    bad += check("..back again: the RUMI bank's last FM6 voice (the bank leads FM6's list, before INIT VOICE)",
+                 TSEL->eng_req == ENGI_FM6 && TSEL->preset == FM6_NFAC + FM6_NRUMI);
+    {
+        uint32_t j;
+        for (j = 0; j < FM6_NRUMI; j++) turn(EN_K2, -1);
+    }
+    bad += check("..back past the bank: the Prophet's last program (Sequential's 200)", TSEL->eng_req == ENGI_PROPHET &&
+                 TSEL->preset == P5_SEQUENTIAL_N);
 
     ui_power_on();
     go_title("SCALES"); frame();
@@ -5212,9 +5218,10 @@ static int test_new_song(void)
 static int test_prophet_pages(void)
 {
     ui_power_on();set_engine_of(TSEL,ENGI_PROPHET);int bad=0,visible=0;
-    bad+=check("selecting Prophet starts on its first factory program",!TSEL->user&&TSEL->preset==1u&&!memcmp(p5_patch_of(TSEL),p5_fac(0),sizeof(p5_patch_t)));
-    uint32_t count,slot,source=preset_all_at(200u,&slot);
-    bad+=check("all the Prophet factory entries (Sequential's 200, the RUMI bank) lead the browser",preset_all_pos(&count)==1u&&ENGINES[ENGI_PROPHET]->npresets==P5_FACTORY_N+1u&&source==ENGI_PROPHET&&slot==200u);
+    bad+=check("selecting Prophet starts on the RUMI bank's first program (its first in the browser)",!TSEL->user&&TSEL->preset==P5_SEQUENTIAL_N+1u&&!memcmp(p5_patch_of(TSEL),p5_fac(P5_SEQUENTIAL_N),sizeof(p5_patch_t)));
+    apply_preset_to(TSEL,1u);
+    uint32_t count,slot,source=preset_all_at(P5_RUMI_N+200u,&slot);
+    bad+=check("all the Prophet factory entries lead the browser: the RUMI bank, INIT, then Sequential's 200",preset_all_pos(&count)==P5_RUMI_N+1u&&ENGINES[ENGI_PROPHET]->npresets==P5_FACTORY_N+1u&&source==ENGI_PROPHET&&slot==200u);
     int factory=ENGINES[ENGI_PROPHET]->npresets==P5_FACTORY_N+1u;
     for(uint32_t k=1;k<=P5_FACTORY_N;k++){
         apply_preset_to(TSEL,k);char name[21];p5_patch_name(name,p5_fac(k-1u));
