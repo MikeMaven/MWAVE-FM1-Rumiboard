@@ -23,9 +23,10 @@
  *   HEDGEHOG   at guard / strike / vibration / damp           a note: the strike, the vibration while it rings, damp
  *   AXOLOTL    float / initiate flip / flip & trail / settle  held: it keeps turning in its bubble (the four frames
  *                                                             round and round); let go: it settles, then floats
- *   SLOTH      lazy wobble / adjust weight / needle skip / return    the master bus: lazy while the mix is quiet,
- *                                                             adjusting its weight while it is loud, the needle
- *                                                             skipping when the limiter catches a peak, then return
+ *   SNAIL      idle / warm up / crinkle / tape tear          the master bus: idle while the mix is quiet, the reel
+ *                                                             warming (its glow) while the mix is loud, the tape
+ *                                                             crinkling while the master's TAPE or SPIT ages the mix,
+ *                                                             tearing when the limiter catches a peak
  * The sound's level: the track's output peak since the last step (mix.c t->peak, Q15, read and cleared here every
  * step as the Mixer's meter does: a 30 ms peak meter), or the amp envelope of its latest voice (mod.c m_env) when
  * that is higher (it is kept only while the modulation matrix runs). Onset: the level rising by a sixth of full
@@ -36,9 +37,9 @@
 #endif
 #include "creature_sprites.h"
 
-enum { CR_NONE, CR_BLOB, CR_FISH, CR_BULLDOG, CR_CHAMELEON, CR_CLOUD, CR_OCTOPUS, CR_HEDGEHOG, CR_AXOLOTL, CR_SLOTH,
+enum { CR_NONE, CR_BLOB, CR_FISH, CR_BULLDOG, CR_CHAMELEON, CR_CLOUD, CR_OCTOPUS, CR_HEDGEHOG, CR_AXOLOTL, CR_SNAIL,
        CR_N };
-_Static_assert(CR_SLOTH - CR_FISH + 1 == CR_SPR_CREATURES, "a sheet per creature, in the enum's order");
+_Static_assert(CR_SNAIL - CR_FISH + 1 == CR_SPR_CREATURES, "a sheet per creature, in the enum's order");
 
 static struct {
     int16_t p, v;                           /* the blob's spring: squash (Q8: 256 = flat, negative = stretched), velocity */
@@ -49,6 +50,7 @@ static struct {
     uint8_t phase, lane, held, rising;      /* a step counter; the last drum lane hit; notes held; the envelope rising */
     int8_t bend;                            /* the pitch bend, -16 .. 16 (the chameleon's tongue waves) */
     uint8_t peak;                           /* the envelope's recent peak (m_env >> 7), falling slowly: the cloud's scale */
+    uint8_t tape;                           /* the master's TAPE or SPIT insert runs (the snail's tape ages) */
     uint32_t ms;                            /* fm1_ms at the last step */
 } cr;
 static uint8_t cr_force;                    /* tests, the emulator: a creature to show regardless of the sound (0: none) */
@@ -84,7 +86,8 @@ static const struct { uint8_t cr; const char *w; } CREATURE_WORDS[] = {
     {CR_CHAMELEON, "SOLO"}, {CR_CHAMELEON, "ARP"}, {CR_CHAMELEON, "SYNC"},
     {CR_CLOUD, "PAD"}, {CR_CLOUD, "CLOUD"}, {CR_CLOUD, "SWELL"}, {CR_CLOUD, "DREAM"}, {CR_CLOUD, "ATMOS"}, {CR_CLOUD, "STRING"},
     {CR_CLOUD, "CHOIR"}, {CR_CLOUD, "VOX"}, {CR_CLOUD, "DRONE"}, {CR_CLOUD, "HAZE"},
-    {CR_SLOTH, "TAPE"}, {CR_SLOTH, "LOFI"}, {CR_SLOTH, "LO-FI"}, {CR_SLOTH, "VINYL"}, {CR_SLOTH, "CASSETTE"}, {CR_SLOTH, "VHS"},
+    {CR_SNAIL, "TAPE"}, {CR_SNAIL, "REEL"}, {CR_SNAIL, "LOFI"}, {CR_SNAIL, "LO-FI"}, {CR_SNAIL, "VINYL"}, {CR_SNAIL, "CASSETTE"},
+    {CR_SNAIL, "VHS"},
     {CR_OCTOPUS, "KIT|"}, {CR_OCTOPUS, "DRUM"}, {CR_OCTOPUS, "PERC"},
 };
 static const char CREATURE_LETTER[CR_N + 1u] = ".LFBCPOHAS";   /* a letter's index is its creature */
@@ -119,14 +122,20 @@ static uint32_t creature_of_entry(uint32_t src, uint32_t k)
 static void creature_step(uint32_t kind, track_t *t, int held)
 {
     uint32_t sel = song.sel % NTRK + 1u, steps = (fm1_ms - cr.ms) / CR_STEP_MS, l;
-    int32_t pk = t->peak, env, target = held ? 40 : 0, onset = 0, drum = drum_track(t), sounding, master = kind == CR_SLOTH;
+    int32_t pk = t->peak, env, target = held ? 40 : 0, onset = 0, drum = drum_track(t), sounding, master = kind == CR_SNAIL;
     t->peak = 0;                                        /* (the meter restarts: the level is the peak of this step) */
     env = pk > t->m_env ? pk : t->m_env;
-    if (master) {                                       /* the sloth listens to the master, not the track */
+    if (master) {                                       /* the snail listens to the master, not the track */
+        uint32_t fs;
         env = mix_peak > 32767 ? 32767 : mix_peak;
         mix_peak = 0;
         held = 0;
         target = 0;
+        cr.tape = 0;                                    /* (a TAPE or SPIT insert on the master, mixed in: the tape ages) */
+        for (fs = 0; fs < FX_SLOTS; fs++) {
+            int32_t ty = song.g[G_MFXTYPE + fs * FX_PARAMS];
+            if ((ty == FX_TAPE || ty == FX_SPIT) && song.g[G_MFXMIX + fs * FX_PARAMS] > 0) cr.tape = 1;
+        }
     }
     if (cr.trk != sel) {                                /* another track: start at rest (a note already sounding there
                                                          * counts as an onset: a move to say hello) */
@@ -136,7 +145,7 @@ static void creature_step(uint32_t kind, track_t *t, int held)
         cr.act = cr.rel = 255;
         steps = 0;
     }
-    if (master) {                                       /* the limiter catching a peak: the needle skips */
+    if (master) {                                       /* the limiter catching a peak: the tape tears */
         if (lim_env > LIM_T + 256 && cr.act > 20u) onset = 1;
     } else if (drum) {                                  /* a lane just hit (stage_panel_hits: 10 frames lit, one less each
                                                          * frame; this runs every other frame, so 10 or 9 is a new hit) */
@@ -211,10 +220,11 @@ static uint32_t creature_pose(uint32_t kind)
         if (cr.held) return (a / 4u) % 4u;
         if (r < 6u) return 3;
         return 0;
-    case CR_SLOTH:                                      /* the skip and its return on a limiter peak; adjusting its
-                                                         * weight while the mix is loud; lazy otherwise */
-        if (a < 10u) return 2;
-        if (a < 20u) return 3;
+    case CR_SNAIL:                                      /* the tape tears when the limiter catches a peak; it crinkles
+                                                         * (in and out, every 6 steps) while the master's TAPE or SPIT
+                                                         * ages a sounding mix; the reel warms while the mix is loud */
+        if (a < 12u) return 3;
+        if (cr.tape && cr.env > 2000 && (cr.phase / 6u) & 1u) return 2;
         return cr.held ? 1 : 0;
     default:                                            /* the attack frames, the held frame while it sounds, then the
                                                          * release frames, then rest */
@@ -237,7 +247,9 @@ static uint32_t creature_sig(void)
                  (cr.act < 16u ? cr.act : 16u) * 263u + (cr.rel < 16u ? cr.rel : 16u) * 613u + cr.lane * 17u + cr.held * 5u +
                  (uint32_t)(cr.env >> 10) * 37u + cr.rising * 3u + cr.peak * 11u + (uint32_t)(cr.bend + 16) * 1009u;
     if (cr.idle > 20u || cr.act < 16u)
-        s += cr.phase * 104729u;                        /* (a bob, a jump, the sway, the record) */
+        s += cr.phase * 104729u;                        /* (a bob, a jump, the sway) */
+    if (cr.tape)
+        s += (cr.phase / 6u) * 31u + 17u;               /* (the snail's tape crinkling in and out) */
     return s;
 }
 
@@ -295,7 +307,7 @@ static void creature_draw_canvas(uint32_t kind, int32_t w, int32_t h)
         creature_blob(w / 2, h - 4, 64);
         return;
     }
-    if (kind < CR_FISH || kind > CR_SLOTH)
+    if (kind < CR_FISH || kind > CR_SNAIL)
         return;
     pose = creature_pose(kind);
     for (i = 0; i < 8u; i++) {                          /* the sheet's colours; cut-outs and light: the background */
@@ -317,6 +329,7 @@ static void creature_draw_canvas(uint32_t kind, int32_t w, int32_t h)
         if (kind == CR_BULLDOG) dy = t < 3 ? t * 2 : t < 9 ? -(6 - (t - 3)) * 2 : 0;
         if (kind == CR_HEDGEHOG) dx = t < 4 ? t : t < 8 ? 4 - (t - 4) : 0;
         if (kind == CR_OCTOPUS) dy = t < 2 ? 3 : t < 5 ? 1 : 0;
+        if (kind == CR_SNAIL) dx = t < 3 ? -t : t < 9 ? -3 + (t - 3) / 2 : 0;   /* (a recoil at the tear) */
     }
     cv_sprite(dx, dy, CR_SPR + CR_SPR_OFF[i], CR_SPR_OFF[i + 1] - CR_SPR_OFF[i], CR_SPR_W, CR_SPR_H, cols);
     (void)w; (void)h;

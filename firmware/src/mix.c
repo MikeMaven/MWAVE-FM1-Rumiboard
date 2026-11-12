@@ -26,7 +26,7 @@ static volatile uint32_t kb_mask, kb_layer;
 static volatile uint8_t kb_lock;
 #define LIM_T 26000                              /* -2 dBFS: only overs, a chord does not duck a held note (#108) */
 static int32_t lim_env = LIM_T;
-static int32_t mix_peak;                         /* the master's peak since the UI last read it (Rumiboard: the sloth) */
+static int32_t mix_peak;                         /* the master's peak since the UI last read it (Rumiboard: the snail) */
 static int32_t dc_l, dc_r, dce_l, dce_r;
 
 /* DC blocker (~2 Hz), always on: a leaky integrator of the input (Q6 state) subtracted from it.

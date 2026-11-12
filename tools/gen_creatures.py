@@ -28,23 +28,12 @@ from pathlib import Path
 from PIL import Image
 
 SHEETS = ["bass_anglerfish", "stab_bulldog", "pluck_chameleon", "pad_cloud", "drums_octopus", "piano_hedgehog",
-          "keys_axolotl", "master_sloth"]
+          "keys_axolotl", "master_snail"]
 BG_RGB, DARK_RGB = (234, 232, 226), (26, 26, 30)       # the preview's background (RUMI) and the dark role
 # Corrections to the sheets, on the role map (a frame's own px, 0 .. 119 x 0 .. 87): ("fill", poses or None for all,
 # x0, y0, x1, y1, roles, role):
-# pixels of the given roles in the box become the role. The sloth: the paw tucked under its body left of the face
-# is a third arm (the one reaching up is that arm); its seams (cut-outs) become body, so the arm vanishes into it.
+# pixels of the given roles in the box become the role.
 PATCHES = {
-    # The sloth keeps the two limbs it lies on; the arm drawn reaching up over its back to the record (a third) goes:
-    # its body-coloured pixels above the head and back become background, and the claws of its hand; the tonearm
-    # (greys) stays with the record.
-    "master_sloth": [("fill", [0], 72, 0, 114, 22, (1,), 0), ("fill", [0], 72, 0, 114, 9, (5, 6), 0),
-                     ("fill", [1], 76, 0, 116, 24, (1,), 0), ("fill", [1], 78, 0, 116, 9, (5, 6), 0),
-                     ("fill", [2], 76, 0, 100, 34, (1, 5), 0),
-                     ("fill", [3], 76, 0, 112, 31, (1,), 0), ("fill", [3], 78, 0, 100, 15, (5, 6), 0),
-                     # the shoulder left above the head's curve: ("cut", poses, x0, y0, x1, y1, "above")
-                     ("cut", [0], 94, 22, 118, 34, "above"), ("cut", [1], 96, 24, 120, 36, "above"),
-                     ("cut", [3], 94, 31, 118, 41, "above")],
     # the chameleon's last frame (the bend): its eye white with a dark pupil, as at the perch, not orange
     "pluck_chameleon": [("fill", [3], 41, 34, 55, 48, (5,), 4), ("fill", [3], 47, 39, 52, 44, (0, 4, 5), 3),
                         ("fill", [2], 49, 42, 60, 53, (5,), 4), ("fill", [2], 52, 45, 57, 50, (0, 4, 5), 3)],   # the reach's too
@@ -65,6 +54,14 @@ FRAMES = {
 # terrier keeps idle and the bark and drops its own squash and tail wag for the in-betweens.
 ORDER = {"stab_bulldog": [0, 1, 2, 2],             # idle, (A), (B), the bark
          "pluck_chameleon": [0, 1, 2, 2]}          # perch, (A), (B), the bend (the sheet's left-facing fourth dropped)
+# A sheet whose poses touch (the snail's tape trail runs into the next pose): the four panels' x ranges in the
+# sheet's pixels, (x0, y0, x1, y1), instead of the scan for empty columns (the y range leaves out the sheet's
+# title and captions).
+PANELS = {"master_snail": [(136, 300, 756, 740), (756, 300, 1392, 740), (1392, 300, 2080, 740), (2122, 300, 2650, 740)]}
+# A sheet whose poses differ in width by their extras (the snail's trail, its crinkle, the torn end): one scale for
+# all four (the smallest that fits), the figure at the left margin, so the creature keeps its size and place and
+# only the extras change. Other sheets: each pose fitted and centred on its own.
+ANCHOR_LEFT = {"master_snail"}
 
 
 def frame_image(spec):
@@ -138,8 +135,9 @@ def components(px, x0, x1, y0, y1, bg, is_fig=None):
     return out
 
 
-def find_panels(im, bg):
-    """the top row's four poses: (x0, y0, x1, y1) boxes in the sheet's pixels, titles and captions left out"""
+def find_panels(im, bg, given=None):
+    """the top row's four poses: (x0, y0, x1, y1) boxes in the sheet's pixels, titles and captions left out; given:
+    the panels' x ranges (PANELS) instead of the scan"""
     w, h = im.size
     small = im.resize((w // 4, h // 4), Image.BOX)
     sw, sh = small.size
@@ -147,6 +145,9 @@ def find_panels(im, bg):
     top, bot = int(sh * 0.12), int(sh * 0.465)            # the top row's figures (titles above, captions below)
     col = [any(not is_bg(px[x, y], bg) for y in range(top, bot)) for x in range(sw)]
     panels, x = [], 0
+    if given:
+        panels, x = [(x0 // 4, x1 // 4) for x0, _, x1, _ in given], sw
+        top, bot = given[0][1] // 4, given[0][3] // 4
     while x < sw:
         while x < sw and not col[x]: x += 1
         if x >= sw: break
@@ -159,7 +160,7 @@ def find_panels(im, bg):
     panels = [p for p in panels if p[1] - p[0] > sw // 12]  # (labels and stray marks are narrow)
     # two poses bridged by a detail (sound rings, a tongue): a panel far wider than the rest splits at the thinnest
     # column of its middle half
-    if panels:
+    if panels and not given:
         med = sorted(p[1] - p[0] for p in panels)[len(panels) // 2]
         split = []
         for x0, x1 in panels:
@@ -183,10 +184,11 @@ def find_panels(im, bg):
         fh = by1 - by0
         for m, cx0, cy0, cx1, cy1 in comps[1:]:
             if m < 6: continue
-            textlike = (cy1 - cy0) < sh * 0.035 and (cx1 - cx0) > 2.5 * (cy1 - cy0 + 1)
+            textlike = (cy1 - cy0) < sh * 0.035 and (cx1 - cx0) > 2.5 * (cy1 - cy0 + 1) and not given   # (given
+            # panels hold no labels: a thin wide strip is the snail's tape)
             tiny = m < n / 40 and (cy1 - cy0) < sh * 0.03   # letters, dots, specks (the marks are drawn by the firmware)
             below = cy0 > by1 + 2
-            if below or textlike or tiny: continue
+            if below or textlike or (tiny and not given): continue   # (given panels: the specks are the drawing's)
             if cx1 < bx0 - (x1 - x0) // 3 or cx0 > bx1 + (x1 - x0) // 3: continue
             bx0, by0, bx1, by1 = min(bx0, cx0), min(by0, cy0), max(bx1, cx1), max(by1, cy1)
         boxes.append((bx0 * 4, by0 * 4, bx1 * 4 + 3, by1 * 4 + 3))
@@ -225,7 +227,7 @@ def sheet_colours(im, bg, boxes):
         if apart(c, cols[0]):
             cols.append(c)
             break
-    # the second accent: a saturated colour if the sheet has one left (a grey sloth keeps its indigo record), else
+    # the second accent: a saturated colour if the sheet has one left (the snail's gold reel), else
     # the next cluster apart from both
     rest = [c for n, c in cands if all(apart(c, k) for k in cols)]
     sats = [c for c in rest if max(c) - min(c) > 32]
@@ -279,6 +281,35 @@ def despeckle(roles):
     return out
 
 
+def drop_trail_ends(roles, w, h):
+    """given panels cut through a trail (the snail's tape runs on under the next pose): a small piece at the floor,
+    left of the frame's figure, is the previous pose's trail end and goes"""
+    px = roles.load()
+    for k in range(4):
+        seen = set()
+        pieces = []
+        for sy in range(h):
+            for sx in range(k * w, (k + 1) * w):
+                if (sx, sy) in seen or not px[sx, sy]:
+                    continue
+                stack, cells = [(sx, sy)], []
+                seen.add((sx, sy))
+                while stack:
+                    x, y = stack.pop()
+                    cells.append((x, y))
+                    for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1), (x - 1, y - 1), (x + 1, y - 1), (x - 1, y + 1), (x + 1, y + 1)):
+                        if k * w <= nx < (k + 1) * w and 0 <= ny < h and (nx, ny) not in seen and px[nx, ny]:
+                            seen.add((nx, ny))
+                            stack.append((nx, ny))
+                pieces.append(cells)
+        main_cx = sum(x for x, _ in max(pieces, key=len)) / max(1, len(max(pieces, key=len)))
+        for cells in pieces:
+            if len(cells) < 60 and max(y for _, y in cells) >= h - 6 and max(x for x, _ in cells) < main_cx - w // 4:
+                for x, y in cells:
+                    px[x, y] = 0
+    return roles
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--refs", default="docs/creatures/refs")
@@ -294,7 +325,7 @@ def main():
     for name in SHEETS:
         im = Image.open(Path(a.refs) / f"{name}.jpg").convert("RGB")
         bg = im.getpixel((8, 8))
-        boxes = find_panels(im, bg)
+        boxes = find_panels(im, bg, PANELS.get(name))
         if len(boxes) < 4:
             print(f"{name}: {len(boxes)} poses found (wanted 4)")
         cols = sheet_colours(im, bg, boxes)
@@ -302,6 +333,7 @@ def main():
         roles = Image.new("L", (a.w * 4, a.h), 0)
         prev = Image.new("RGB", (a.w * 4, a.h), BG_RGB)
         order = ORDER.get(name, [0, 1, 2, 3])
+        poses = []
         for k in range(4):
             x0, y0, x1, y1 = boxes[order[k]] if order[k] < len(boxes) else boxes[-1]
             pose = im.crop((x0, y0, x1, y1))
@@ -310,14 +342,25 @@ def main():
                 fim = frame_image(FRAMES[name][k])
                 fbg = fim.getpixel((8, 8))
                 pose = fim.crop(find_figure(fim, fbg, cols))
-            pose.thumbnail((a.w - 4, a.h - 4), Image.BOX)       # fit, a 2 px margin
-            ox, oy = k * a.w + (a.w - pose.width) // 2, a.h - 2 - pose.height   # standing on the canvas's floor
+            poses.append((pose, fbg))
+        fit = [min((a.w - 4) / p.width, (a.h - 4) / p.height) for p, _ in poses]   # each pose's scale to fit, a 2 px margin
+        if name in ANCHOR_LEFT:
+            fit = [min(fit)] * 4
+        for k, (pose, fbg) in enumerate(poses):
+            if name in ANCHOR_LEFT:
+                pose = pose.resize((max(1, round(pose.width * fit[k])), max(1, round(pose.height * fit[k]))), Image.BOX)
+            else:
+                pose.thumbnail((a.w - 4, a.h - 4), Image.BOX)
+            ox = k * a.w + (2 if name in ANCHOR_LEFT else (a.w - pose.width) // 2)
+            oy = a.h - 2 - pose.height                 # standing on the canvas's floor
             pp = pose.load()
             for y in range(pose.height):
                 for x in range(pose.width):
                     r = classify(pp[x, y], fbg, cols)
                     roles.putpixel((ox + x, oy + y), r)
         roles = despeckle(roles)
+        if name in PANELS:
+            roles = drop_trail_ends(roles, a.w, a.h)
         rp = roles.load()
         edited = Path(a.out) / "edits" / f"{name}.png"    # a hand-edited copy of the preview (any whole scale): the
         if edited.exists():                                # truth for this creature; the sheet's patches do not apply
@@ -367,7 +410,7 @@ def main():
     if a.header:
         offs.append(len(blob))
         lines = ["/* generated by tools/gen_creatures.py from docs/creatures/refs/ (the jpgs): the creatures' sprites (ui_creature.c).",
-                 f" * {a.w} x {a.h} px frames, four poses a creature, in the order of CR_FISH .. CR_SLOTH; runs of a colour role:",
+                 f" * {a.w} x {a.h} px frames, four poses a creature, in the order of CR_FISH .. CR_SNAIL; runs of a colour role:",
                  " * b = role << 5 | (n - 1) for n <= 31, else role << 5 | 31 then n - 32. Roles: 0 bg (transparent), 1 body, 2 accent,",
                  " * 3 dark, 4 light, 5 second accent, 6 third accent. CR_SPR_COLS: each creature's role colours (RGB565) from its sheet; roles 0 and 4",
                  " * are 0 there: the background. In the resource region (MELODEE_RES). */",

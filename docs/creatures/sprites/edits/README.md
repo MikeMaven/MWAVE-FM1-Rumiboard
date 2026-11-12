@@ -1,6 +1,6 @@
 # Hand-edited creature frames
 
-Drop a hand-edited copy of a creature's preview here, under the same name (`master_sloth.png`,
+Drop a hand-edited copy of a creature's preview here, under the same name (`master_snail.png`,
 `bass_anglerfish.png` ...), and it becomes the truth for that creature: the build reads it instead of
 cutting the frames out of the concept sheet, and the sheet's patches no longer apply.
 
