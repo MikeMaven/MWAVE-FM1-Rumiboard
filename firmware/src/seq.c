@@ -248,6 +248,7 @@ static void recording_undo_capture(track_t *t);
 static void recording_undo_clear(void);
 static void seq_release(track_t *t);
 static void groove_reset(void);                 /* (the groove's queues: the transport clears them) */
+static int groove_grid_drums(const track_t *t); /* (FEEL on: a DRUM track's recorded hits play from the grid) */
 
 #include "motion.c"
 /* A section-local sound starts a new automation base without seeking the
@@ -1179,6 +1180,10 @@ static const groove_t GROOVES[GROOVE_N] = {
     [GROOVE_RUSH] = {3, -10, -10, 0, 3, 0, 10, 0},  /* Charnas's rushed snare: 65 ms, 5/192 of a bar */
 };
 static const groove_t *groove_now(void) { return &GROOVES[(uint32_t)song.g[G_GROOVE] % GROOVE_N]; }
+/* FEEL on: a DRUM track's live-recorded lane hits play from the grid (their steps, shifted like entered hits) and
+ * not from the recording, which would play them unshifted beside them (a flam); OFF plays the take as played
+ * (recording.c recording_fire, recording_step_skip). A take's other GM drums (a crash) stay the recording's */
+static int groove_grid_drums(const track_t *t) { return song.g[G_GROOVE] != GROOVE_OFF && drum_track(t); }
 static uint32_t groove_units(int32_t pulses) { return (uint32_t)(pulses < 0 ? -pulses : pulses) * (seq_beat_samples() / 96u); }
 
 /* lane l's shift in pulses at step idx: the lanes KICK SNARE CLAP HATCL HATOP TOM RIM BELL (eng_drum.c); the hats

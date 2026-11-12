@@ -363,13 +363,13 @@ static uint32_t recording_step_skip(track_t *t,const step_t *s,uint32_t skip)
         uint32_t tr=trk_index(t),view=t->seq_idx;
         if(recording_pitch_note_key(s)!=recording_pitch_notes[tr][view])recording_pitch_dirty[tr][view>>5]|=1u<<(view&31u);
         recording_pitch_prepare(t);
-        return skip | (recording_pitch[tr][view] & (((1u<<s->n)-1u)|0xff00u));
+        return skip | (recording_pitch[tr][view] & (((1u<<s->n)-1u)|(groove_grid_drums(t)?0u:0xff00u)));
     }
 #endif
 scan:
     for(uint32_t r=recording_head[recording_owner(t)];r<RECORD_MAX;r=recording_next[r])if(recording_active(t,r) && recording_view(t,&recording[r])==t->seq_idx){
         for(uint32_t k=0;k<s->n;k++)if(s->note[k]==recorded_note(&recording[r]))skip|=1u<<k;
-        for(uint32_t k=0;k<NLANE;k++)if(DRUM_LANE_NOTE[k]==recorded_note(&recording[r]))skip|=1u<<(8u+k);
+        if(!groove_grid_drums(t))for(uint32_t k=0;k<NLANE;k++)if(DRUM_LANE_NOTE[k]==recorded_note(&recording[r]))skip|=1u<<(8u+k);
     }
     return skip;
 }
@@ -836,6 +836,7 @@ static void recording_fire(track_t *t, uint32_t i, uint32_t period, uint32_t lat
     if (recording_flags[i] & 4u) return;
     recording_flags[i] |= 4u;
     if ((recording_flags[i] & 1u) || ((seq_hush >> trk_index(t)) & 1u)) return;   /* (an edit waiting: seq.c) */
+    if (groove_grid_drums(t) && recorded_note(r) == DRUM_LANE_NOTE[drum_lane(recorded_note(r))]) return;   /* (the grid's) */
     uint32_t chance = step_chance(&t->step[recording_view(t, r)]);
     if (chance < 100u && rng() % 100u >= chance) return;
     uint32_t gate = recording_gate(r, period);

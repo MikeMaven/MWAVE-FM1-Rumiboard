@@ -6,7 +6,9 @@
  * 2. DILLA: the kick 3 pulses late, the snare and the clap 1 early, the hats on the beat straight and the off-beat
  *    hats 3 late, a bass sound 10 pulses behind, another melodic track on the grid (a pulse: 1/96 of a beat).
  * 3. RUSH: the snare 10 pulses early (Charnas's 65 ms), fired ahead of its step.
- * 4. The project wire keeps the groove (the tail byte); the TEMPO page's fourth knob is GROOVE; the id is not reserved. */
+ * 4. The project wire keeps the groove (the tail byte); the TEMPO page's fourth knob is GROOVE; the id is not reserved.
+ * 5. A live take on the DRUM track (hits recorded off the grid): with OFF it plays as played; with a FEEL on, each hit
+ *    plays once, from the grid, shifted (no flam of the recording's copy and the grid's). */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -56,6 +58,31 @@ static uint32_t first_at(const ev_t *ev, uint32_t n, uint32_t t, uint32_t note, 
         if (ev[i].trk == t && ev[i].note == note && ev[i].at + 1u > from && ev[i].at < to)
             return ev[i].at;
     return 0xFFFFFFFFu;
+}
+
+static uint32_t count_in(const ev_t *ev, uint32_t n, uint32_t t, uint32_t note, uint32_t from, uint32_t to)
+{
+    uint32_t i, c = 0;
+    for (i = 0; i < n; i++)
+        if (ev[i].trk == t && ev[i].note == note && ev[i].at + 1u > from && ev[i].at < to) c++;
+    return c;
+}
+
+/* a take: track 1 armed, note1 played at sample at1 and note2 at at2 (multiples of CTL), the transport then stopped */
+static void play_rec(uint32_t samples, uint32_t note1, uint32_t at1, uint32_t note2, uint32_t at2)
+{
+    uint32_t f;
+    int32_t o[2 * CTL];
+    rec_set(&trk[0], 1);
+    transport_req = 1;
+    for (f = 0; f < samples; f += CTL) {
+        mix_block(o, CTL);
+        if (f == at1) input_on(&trk[0], note1, 100); else if (f == at1 + CTL) input_off(&trk[0], note1);
+        if (f == at2) input_on(&trk[0], note2, 100); else if (f == at2 + CTL) input_off(&trk[0], note2);
+    }
+    transport_req = 2;
+    mix_block(o, CTL);
+    rec_set(&trk[0], 0);
 }
 
 static int near(uint32_t at, int32_t want, int32_t tol)
@@ -131,6 +158,34 @@ int main(void)
     bad += check("RUSH: the snare 10 pulses ahead of its step, the kick 3 behind",
                  near(first_at(ev, n, 0, SNARE, step_at[4] - 6000u, step_at[4] + 3000u), (int32_t)(step_at[4] - 10u * pulse), tol) &&
                  near(first_at(ev, n, 0, KICK, 0, 4000), (int32_t)(3u * pulse), tol));
+
+    {                                                   /* a live take: a hat 2500 samples into step 3, a snare into step 13 */
+        const uint32_t step = (uint32_t)FS * 60u / 90u / 4u, hat_at = (2u * step + 2500u) / CTL * CTL, sn_at = (12u * step + 2500u) / CTL * CTL;
+        const step_t *s2 = &trk[0].step[2], *s12 = &trk[0].step[12];
+        uint32_t k;
+        setup(GROOVE_OFF);
+        for (k = 0; k < 16u; k++) trk[0].step[k].hit &= (uint8_t)~(1u << 3);   /* (no hats on the grid, no clap) */
+        trk[0].step[12].hit = 0;
+        play_rec(FS * 3u, HAT, hat_at, SNARE, sn_at);
+        bad += check("a live take: the hat into step 3's cell and the snare into step 13's, as recorded steps",
+                     (s2->flags & SF_RECORDED) && (s2->hit & 8u) && (s12->flags & SF_RECORDED) && (s12->hit & 2u));
+        n = play(ev, 256, FS * 3u);
+        bad += check("OFF: the take plays as played (the hat 2500 samples into its step, once; the snare too)",
+                     count_in(ev, n, 0, HAT, 0, step_at[4]) == 1u && near(first_at(ev, n, 0, HAT, step_at[2], step_at[3]), (int32_t)(hat_at + CTL), (int32_t)tol + 8) &&
+                     count_in(ev, n, 0, SNARE, step_at[8], step_at[8] + 8u * step) == 1u &&
+                     near(first_at(ev, n, 0, SNARE, step_at[12], step_at[13]), (int32_t)(sn_at + CTL), (int32_t)tol + 8));
+        song.g[G_GROOVE] = GROOVE_DILLA;
+        n = play(ev, 256, FS * 3u);
+        bad += check("DILLA: the take's hat plays once, from the grid, 3 pulses after its step; the snare once, a pulse early",
+                     count_in(ev, n, 0, HAT, 0, step_at[4]) == 1u && near(first_at(ev, n, 0, HAT, step_at[2] - 100u, step_at[3]), (int32_t)(step_at[2] + 3u * pulse), tol) &&
+                     count_in(ev, n, 0, SNARE, step_at[8], step_at[8] + 8u * step) == 1u &&
+                     near(first_at(ev, n, 0, SNARE, step_at[12] - 4000u, step_at[13]), (int32_t)(step_at[12] - pulse), tol));
+        song.g[G_GROOVE] = GROOVE_RUSH;
+        n = play(ev, 256, FS * 3u);
+        bad += check("RUSH: the take's snare plays once, 10 pulses ahead of its step",
+                     count_in(ev, n, 0, SNARE, step_at[8], step_at[8] + 8u * step) == 1u &&
+                     near(first_at(ev, n, 0, SNARE, step_at[12] - 6000u, step_at[13]), (int32_t)(step_at[12] - 10u * pulse), tol));
+    }
 
     {
         static project_t q, q2;
