@@ -247,6 +247,7 @@ static int rec_any(void) { return (song.rec & ~song.rec_wait) && song.playing &&
 static void recording_undo_capture(track_t *t);
 static void recording_undo_clear(void);
 static void seq_release(track_t *t);
+static void groove_reset(void);                 /* (the groove's queues: the transport clears them) */
 
 #include "motion.c"
 /* A section-local sound starts a new automation base without seeking the
@@ -972,6 +973,7 @@ static void seq_start(void)
         cap_step[i] = 0xFFFFu;                     /* (capture: step 0 is the first) */
     }
     seq_seek_units = 0;
+    groove_reset();
     cap_from = cap_w;                              /* capture and the jam log: this run */
     cap_track = song.sel;
     jam.n = 0;
@@ -1074,6 +1076,7 @@ static void seq_stop(void)
     kb_strum_pending = midi_strum_pending = 0; /* STOP cancels the unplayed part of live sweeps. */
     cin_left=0; click_req=0; clk.env=0; audition_request=0; if(audition_active)audition_stop();
     uint32_t i;
+    groove_reset();
     seq_erase_request = 0;
     seq_erase_transport++;
     uint8_t takes = song.playing ? song.rec & ~song.rec_wait : 0;
@@ -1162,6 +1165,170 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
     t->seq_hold = (s->flags & SF_SLIDE) != 0 || next_tie;   /* next step a TIE: keep the notes to it */
 }
 
+/* ---- groove (Rumiboard, docs/GROOVE.md): J Dilla's feel after Dan Charnas (Dilla Time): the elements moved off the
+ * grid each by its own amount, in MPC3000 pulses (96 a beat: 256 of the sequencer's units), the hi-hats on the beat
+ * the straight anchor. The amounts are measured on his records (docs/groove/README.md). A late element is a step's
+ * lanes (or, on a melodic track, the whole step) queued at the step and played when their time comes (gr_q); an early
+ * lane is played ahead of its step, from the next step's hits, and skipped when the step arrives (gr_early). */
+typedef struct { int8_t kick, snare, clap, hat_on, hat_off, perc, bass, other; } groove_t;
+static const groove_t GROOVES[GROOVE_N] = {
+    [GROOVE_OFF] = {0, 0, 0, 0, 0, 0, 0, 0},
+    [GROOVE_DILLA] = {3, -1, -1, 0, 3, 0, 10, 0},   /* the kick 2..3 pulses behind, the clap a shade early, the off-beat
+                                                     * hats late (52..54 % swing), the bass far behind (Hein: a 32nd) */
+    [GROOVE_DRAG] = {6, -1, -1, 0, 3, 0, 12, 0},    /* The Light: the kick 6 behind */
+    [GROOVE_RUSH] = {3, -10, -10, 0, 3, 0, 10, 0},  /* Charnas's rushed snare: 65 ms, 5/192 of a bar */
+};
+static const groove_t *groove_now(void) { return &GROOVES[(uint32_t)song.g[G_GROOVE] % GROOVE_N]; }
+static uint32_t groove_units(int32_t pulses) { return (uint32_t)(pulses < 0 ? -pulses : pulses) * (seq_beat_samples() / 96u); }
+
+/* lane l's shift in pulses at step idx: the lanes KICK SNARE CLAP HATCL HATOP TOM RIM BELL (eng_drum.c); the hats
+ * by their place in the beat (the second 8th: the off-beat) */
+static int32_t groove_lane_pulses(const groove_t *g, uint32_t l, uint32_t idx, uint32_t period)
+{
+    switch (l) {
+    case 0: return g->kick;
+    case 1: return g->snare;
+    case 2: return g->clap;
+    case 3: case 4: {
+        uint32_t beat = seq_beat_samples(), in = (uint32_t)(((uint64_t)idx * period) % beat);
+        return in * 4u / beat == 2u ? g->hat_off : g->hat_on;
+    }
+    default: return g->perc;
+    }
+}
+
+/* a late event's time came: a drum step's lanes, or a melodic track's whole step (seq_step, as at its boundary) */
+static void groove_play(track_t *t, uint32_t idx, uint32_t lanes, uint32_t skip, uint32_t hush)
+{
+    const step_t *s = hush ? &SEQ_HUSH_STEP : &seq_steps(t)[idx % NSTEP];
+    uint32_t i, vel;
+    if (!lanes) {
+        uint32_t period = seq_div_samples((uint32_t)t->p[P_SDIV]);
+        seq_step(t, s, step_gate(s) ? step_samples(t, period, idx) : period, skip);
+        return;
+    }
+    vel = (s->flags & SF_ACCENT) ? 127u : (s->vel ? s->vel : 96u);
+    for (i = 0; i < NLANE; i++)
+        if (((lanes >> i) & 1u) && !((skip >> (8u + i)) & 1u))
+            trk_note_on(t, DRUM_LANE_NOTE[i], (s->acc >> i) & 1u ? 127u : vel);   /* (a drum ends by itself) */
+}
+
+static void groove_queue(track_t *t, uint32_t due, uint32_t idx, uint32_t lanes, uint32_t skip, uint32_t hush)
+{
+    if (t->gr_n >= GROOVE_Q) {                          /* (full: now rather than never) */
+        groove_play(t, idx, lanes, skip, hush);
+        return;
+    }
+    t->gr_q[t->gr_n].due = (uint16_t)(due > 65535u ? 65535u : due);
+    t->gr_q[t->gr_n].idx = (uint8_t)idx;
+    t->gr_q[t->gr_n].lanes = (uint8_t)lanes;
+    t->gr_q[t->gr_n].skip = (uint16_t)skip;
+    t->gr_q[t->gr_n].hush = (uint8_t)hush;
+    t->gr_n++;
+}
+
+/* the block passes: the late events whose time is in it */
+static void groove_tick(track_t *t, uint32_t n)
+{
+    uint32_t i = 0;
+    while (i < t->gr_n) {
+        if (t->gr_q[i].due > n) {
+            t->gr_q[i].due = (uint16_t)(t->gr_q[i].due - n);
+            i++;
+            continue;
+        }
+        {
+            uint32_t idx = t->gr_q[i].idx, lanes = t->gr_q[i].lanes, skip = t->gr_q[i].skip, hush = t->gr_q[i].hush, j;
+            t->gr_n--;
+            for (j = i; j < t->gr_n; j++)              /* (in order: the firmware has no memmove) */
+                t->gr_q[j] = t->gr_q[j + 1u];
+            groove_play(t, idx, lanes, skip, hush);
+        }
+    }
+}
+
+/* the step at its boundary: what plays now, what is queued for later (seq_step gets the rest with the late and the
+ * already-played early lanes skipped) */
+static void groove_step(track_t *t, const step_t *s, uint32_t period, uint32_t skip, uint32_t hush)
+{
+    const groove_t *g = groove_now();
+    uint32_t gate = step_gate(s) ? step_samples(t, period, t->seq_idx) : period;
+    if (g == &GROOVES[GROOVE_OFF]) {
+        t->gr_early = 0;
+        seq_step(t, s, gate, skip);
+        return;
+    }
+    if (drum_track(t)) {
+        uint32_t i, j, late[NLANE];
+        skip |= (uint32_t)t->gr_early << 8;
+        t->gr_early = 0;
+        for (i = 0; i < NLANE; i++) {
+            int32_t pl = ((s->hit >> i) & 1u) && !hush && s->time == ST_NOTE ? groove_lane_pulses(g, i, t->seq_idx, period) : 0;
+            late[i] = pl > 0 ? groove_units(pl) : 0u;
+        }
+        for (i = 0; i < NLANE; i++)
+            if (late[i] && !((skip >> (8u + i)) & 1u)) {
+                uint32_t d = late[i], lanes = 0;
+                for (j = i; j < NLANE; j++)
+                    if (late[j] == d) {
+                        lanes |= 1u << j;
+                        late[j] = 0;
+                    }
+                groove_queue(t, d, t->seq_idx, lanes, skip, hush);
+                skip |= lanes << 8;
+            }
+        seq_step(t, s, gate, skip);
+        return;
+    }
+    {
+        int32_t pl = (groove_bass >> trk_index(t)) & 1u ? g->bass : g->other;
+        if (pl > 0 && s->time != ST_TIE) {
+            groove_queue(t, groove_units(pl), t->seq_idx, 0, skip, hush);
+            return;
+        }
+        seq_step(t, s, gate, skip);
+    }
+}
+
+/* ahead of the next step: its lanes with an early shift, when their time comes in this block (not across a bank
+ * change or a chain's rest: those wait for the step) */
+static void groove_peek(track_t *t, uint32_t n, uint32_t period, uint32_t len)
+{
+    const groove_t *g = groove_now();
+    const step_t *s;
+    uint32_t next, cur_len, i, vel;
+    if (g == &GROOVES[GROOVE_OFF] || !drum_track(t) || t->seq_pos >= 0x7FFFFFFFu || !len) return;
+    next = (t->seq_idx + 1u) % len;
+    if (!next && (t->pattern_next < NPAT || chain.running)) return;
+    if (chain_rest(t) || ((seq_hush >> trk_index(t)) & 1u)) return;
+    s = &seq_steps(t)[next];
+    if (s->time != ST_NOTE || !s->hit) return;
+    cur_len = step_samples(t, period, t->seq_idx);
+    vel = (s->flags & SF_ACCENT) ? 127u : (s->vel ? s->vel : 96u);
+    for (i = 0; i < NLANE; i++) {
+        int32_t pl;
+        uint32_t ahead, k;
+        if (!((s->hit >> i) & 1u) || ((t->gr_early >> i) & 1u)) continue;
+        pl = groove_lane_pulses(g, i, next, period);
+        if (pl >= 0) continue;
+        ahead = groove_units(pl);
+        if (ahead >= cur_len) ahead = cur_len - 1u;
+        if (t->seq_pos + n + ahead < cur_len) continue;   /* (not yet) */
+        t->gr_early |= (uint8_t)(1u << i);
+        for (k = 0; k < t->rskip_n; k++)                 /* (recorded into the step just now: it sounds already) */
+            if (t->rskip_idx == next && t->rskip[k] == DRUM_LANE_NOTE[i]) break;
+        if (k < t->rskip_n) continue;
+        if (step_chance(s) < 100u && rng() % 100u >= step_chance(s)) continue;
+        trk_note_on(t, DRUM_LANE_NOTE[i], (s->acc >> i) & 1u ? 127u : vel);
+    }
+}
+
+static void groove_reset(void)
+{
+    uint32_t k;
+    for (k = 0; k < NTRK; k++) trk[k].gr_n = trk[k].gr_early = 0;
+}
+
 static void seq_grid_tick(track_t *t, uint32_t n)
 {
     uint32_t period, len;
@@ -1177,6 +1344,8 @@ static void seq_grid_tick(track_t *t, uint32_t n)
         t->rh_elapsed += n;
     period = seq_div_samples((uint32_t)t->p[P_SDIV]);
     len = (uint32_t)t->p[P_SLEN];
+    groove_tick(t, n);
+    groove_peek(t, n, period, len);
     t->seq_pos += n;
     for (;;) {
         uint32_t cur_len = step_samples(t, period, t->seq_idx);
@@ -1237,14 +1406,15 @@ static void seq_grid_tick(track_t *t, uint32_t n)
                 }
                 t->rskip_n = 0;
             }
-            if (chain_rest(t) || ((seq_hush >> trk_index(t)) & 1u))
+            uint32_t hush = chain_rest(t) || ((seq_hush >> trk_index(t)) & 1u);
+            if (hush)
                 s = &SEQ_HUSH_STEP;
             if (starting && chain.seek_samples[trk_index(t)] && s->time == ST_TIE) {
                 uint32_t j = t->seq_idx;
                 for (uint32_t count = 0; count < len && seq_steps(t)[j].time == ST_TIE; count++) j = (j + len - 1u) % len;
                 if (seq_steps(t)[j].time == ST_NOTE) seq_step(t, &seq_steps(t)[j], period, skip);
             }
-            seq_step(t, s, step_gate(s) ? step_samples(t, period, t->seq_idx) : period, skip);
+            groove_step(t, s, period, skip, hush);
             if (starting) chain.seek_samples[trk_index(t)] = 0;
         }
     }

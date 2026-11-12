@@ -184,6 +184,18 @@ static void cur_entry_of(const track_t *t, uint32_t *src, uint32_t *k)
 }
 static void cur_entry(uint32_t *src, uint32_t *k) { cur_entry_of(TSEL, src, k); }
 
+/* the groove's bass (seq.c GROOVES .bass, docs/GROOVE.md): a part whose sound is a BASS by its category; the ISR
+ * reads the byte. Every UI frame (ui_draw): the categories are tables, or cached per user slot. */
+static void groove_roles(void)
+{
+    uint32_t k, src, i, bits = 0;
+    for (k = 0; k < NPART; k++) {
+        cur_entry_of(&trk[k], &src, &i);
+        bits |= (uint32_t)(entry_cat(src, i) == CAT_BASS) << k;
+    }
+    groove_bass = (uint8_t)bits;
+}
+
 /* RECENT: the sounds loaded by browsing, newest first (src << 8 | k; RAM only) */
 #define RECENT_N 8u
 static uint32_t recent[RECENT_N];

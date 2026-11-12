@@ -19,21 +19,42 @@ offset in milliseconds and MPC pulses, with the hats' swing (`--selftest` proves
 within about 4 ms). The bass needs its own stem. Measurements go in `docs/groove/` as they are made, and the
 DILLA preset below takes its numbers from them.
 
-## What the sequencer has, and what the mode needs
+## The mode, as built
 
 Melodee's sequencer has SWING (per track and global: the even steps longer, the odd ones shorter, 0..100 =
-50..70 %) and fires every element of a step at the step boundary. The Dilla feel needs **shift**: a whole
-element moved off the grid by a fixed amount, early or late, in pulses so it scales with the tempo.
+50..70 %) and fires every element of a step at the step boundary. The Dilla feel needs **shift**: an element
+moved off the grid by a fixed amount, early or late, in pulses so it scales with the tempo. Rumiboard adds it
+as **GROOVE**, the fourth knob of SEQ > TEMPO (`song.g[G_GROOVE]`, kept in the project; `seq.c GROOVES`):
 
-Design (to build once the measurements are in):
+| GROOVE | kick | snare, clap | hats on the beat | off-beat hats | bass sound | other tracks | from |
+|---|---|---|---|---|---|---|---|
+| OFF | 0 | 0 | 0 | 0 | 0 | 0 | |
+| DILLA | +3 | −1 | 0 | +3 | +10 | 0 | the measurements: the kick 2–3 pulses behind, the clap a shade early, 52–54 % hats; the bass Hein's 32nd |
+| DRAG | +6 | −1 | 0 | +3 | +12 | 0 | The Light's kick |
+| RUSH | +3 | −10 | 0 | +3 | +10 | 0 | Charnas's rushed snare, 65 ms |
 
-- **SHIFT per track** (−24..+24 pulses; a DRUM track: one per lane), stored as common parameters just before
-  P_E0 so projects and presets of older layouts load by count. A late shift is a delayed trigger: the step
-  fires into a small per-track queue (lane or notes, due time) that the block tick drains. An early shift
-  is the same queue with every track's base delay raised to the largest early shift in use, so the earliest
-  element fires on the grid and the rest after it; with no early shift the base is 0 and nothing is delayed.
-  The click and the MIDI clock take the base delay too, so what the player hears stays with the grid.
-- **Recording** subtracts a track's effective delay from a recorded onset, so a part played along to the
-  heard beat lands on the step it was meant for.
-- **GROOVE presets** on the song page: STRAIGHT (0), MPC 54 / 58 / 62 (swing only), DILLA: hats 0, snare
-  −9 pulses, kick and bass late by the measured figures (until measured: kick +3, bass +12).
+In MPC pulses, 1/96 of a beat (256 of the sequencer's units; 6.9 ms at 90 BPM). The drum lanes are KICK,
+SNARE, CLAP, the two hats (on the beat or on the second 8th of it, by the step's place), and TOM / RIM / BELL
+as percussion (0). A track whose sound is a BASS by its category (browse.c `groove_roles`, every UI frame) is
+the bass; the other melodic tracks stay on the grid. SWING still applies on top.
+
+How it plays (`seq.c groove_step`, `groove_peek`, `groove_tick`): at a step's boundary the late lanes are
+queued, grouped by their shift, and played when their time comes (`gr_q`, six events a track); a melodic
+track's late step is the whole step, queued and played by `seq_step` later, so its gate and slides are as
+on the grid. An early lane is played ahead of its step from the next step's hits, when its time comes within
+the block, and skipped when the step arrives (`gr_early`); not across a bank change or a chain's rest, where
+the step waits. The transport's start and stop clear both. The clock, the click, MIDI clock out and recording
+stay on the grid: a part played along to the heard drums records where it was played against the grid, as on
+the MPC. `tests/groove_test.c` plays a bar and measures each element against its step.
+
+The firmware costs: 416 bytes of RAM (the queues), about 1 KB of flash.
+
+## Ableton Live: the same feel on your own tracks
+
+`tools/ableton_grooves.py` writes the shifts as Live groove files (`ableton/grooves/*.agr`, plain XML Live
+reads): one groove per element, a bar of 16ths each moved by its pulses, Timing 100 %, no velocity or
+random. Drop a groove on a clip (MIDI, or a warped audio clip: Live moves its transients) through the Groove
+Pool; since a groove moves notes by their position and not by their pitch, give each drum its own clip or
+track (a Drum Rack: Extract Chains) and its own groove. For an audio track that should simply sit behind,
+Live's Track Delay in the mixer does the same in milliseconds: the table in `ableton/grooves/README.md`
+gives the pulses in milliseconds at common tempos.

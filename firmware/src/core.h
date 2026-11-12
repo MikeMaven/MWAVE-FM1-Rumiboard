@@ -213,6 +213,11 @@ enum {                          /* global parameters */
     G_MFXTONE, G_MFX2TONE, G_MFX3TONE, /* the shared slots' TONE */
     G_COUNT
 };
+/* the groove presets (seq.c GROOVES): J Dilla's feel after Charnas, the elements moved off the grid by MPC pulses */
+enum { GROOVE_OFF, GROOVE_DILLA, GROOVE_DRAG, GROOVE_RUSH, GROOVE_N };
+#define GROOVE_Q 6u                /* late events a track holds (a drum step's lanes by shift, or whole steps) */
+static void groove_roles(void);    /* browse.c: which tracks play a bass (the groove's bass shift), every UI frame */
+static uint8_t groove_bass;        /* bit k: part k's sound is a BASS (browse.c groove_roles; seq.c reads it) */
 /* First slot wins on import. Explicit edits move the single reverb to the
  * selected slot. Values and parameter IDs keep their existing wire layout. */
 static void shared_fx_normalize(int16_t *g)
@@ -242,11 +247,14 @@ static int param_master_fx(uint32_t id){return id>=G_MFXTYPE && id<=G_MFX3CHAR;}
 #define G_WDRUM G_RESERVED8
 #define G_SAFETY G_RESERVED9
 #define G_DRREV G_RESERVED26
+#define G_GROOVE G_RESERVED10      /* Rumiboard: the groove preset (seq.c GROOVES, docs/GROOVE.md); a song global on a
+                                    * retired id (its wire bytes are the master FX's): kept in the project's tail byte
+                                    * PROJ_LP_WIRE instead */
 
 static int param_reserved(uint32_t id)
 { return (id>=P_RESERVED33 && id<=P_RESERVED36) || (id>=P_RESERVED45 && id<=P_RESERVED48); }
 static int global_reserved(uint32_t id)
-{ return (id>=G_RESERVED4 && id<=G_RESERVED11) || (id>=G_RESERVED24 && id<=G_RESERVED26); }
+{ return id != G_GROOVE && ((id>=G_RESERVED4 && id<=G_RESERVED11) || (id>=G_RESERVED24 && id<=G_RESERVED26)); }
 
 /* stored parameters of an older layout -> today's P_* order. A store keeps np = the P_COUNT it was
  * written with; common parameters are only ever added just before P_E0, so the first np - 8 are
@@ -505,6 +513,10 @@ typedef struct track {
     uint8_t seq_active;          /* any step programmed */
     uint8_t rskip_idx;           /* live recording put notes into the step about to play: */
     uint8_t rskip_n, rskip[NLANE];   /* do not trigger them again there (they sound already) */
+    /* groove (seq.c, docs/GROOVE.md): the next step's lanes fired ahead of it already; the late events waiting, each a
+     * drum step's lanes of one shift, or a whole step (a melodic track) */
+    uint8_t gr_early, gr_n;
+    struct { uint16_t due; uint8_t idx, lanes; uint16_t skip; uint8_t hush, pad; } gr_q[GROOVE_Q];
     /* live recording of held notes (seq.c rec_hold): the steps they are held into become TIEs */
     uint8_t rh_n, rh_note[4];    /* recorded notes still held, 0 = none */
     uint8_t rh_start;            /* the step they were recorded into */

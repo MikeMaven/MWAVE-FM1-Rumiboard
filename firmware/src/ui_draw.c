@@ -1275,6 +1275,7 @@ static void draw_toast(void)
 static void ui_draw_frame(void);
 static void ui_draw(void)                               /* (gfx.c: the fills wait for the frame's canvases) */
 {
+    groove_roles();                                     /* (Rumiboard: which parts play a bass, for the groove) */
     gfx_frame(1);
     ui_draw_frame();
     gfx_frame(0);

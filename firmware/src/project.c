@@ -321,6 +321,7 @@ static int proj_pack(project_store_t *out, const project_t *q)
     b[PROJ_FX_WIRE_OFF]='M';b[PROJ_FX_WIRE_OFF+1u]='F';b[PROJ_FX_WIRE_OFF+2u]='X';b[PROJ_FX_WIRE_OFF+3u]=(uint8_t)q->g[G_FXRETURN];
     for(i=0;i<FX_SLOTS*FX_PARAMS;i++){uint32_t id=G_MFXTYPE+i;if(q->g[id]<GP[id].min || q->g[id]>GP[id].max)return 0;b[PROJ_MASTER_WIRE+i]=(uint8_t)q->g[id];} b[62] = q->sel; b[63] = q->parts; b[64] = q->phys; b[66] = P_COUNT;
     for(i=0;i<FX_SLOTS;i++){int32_t v=q->g[G_MFXTONE+i];if(v<-FX_TONE_MAX || v>FX_TONE_MAX)return 0;b[PROJ_TONE_WIRE+i]=(uint8_t)(v+64);}
+    if(q->g[G_GROOVE]<0 || q->g[G_GROOVE]>=(int16_t)GROOVE_N)return 0;b[PROJ_LP_WIRE]=(uint8_t)q->g[G_GROOVE];   /* (Rumiboard: the groove, in the tail) */
     uint32_t banks = 0;
     _Static_assert(PROJ_TRK <= 4u && NPAT <= 16u, "active banks: 3 low bits a track, bit 3 in 12 + track");
     for (t = 0; t < PROJ_TRK; t++) {
@@ -391,6 +392,7 @@ static int proj_unpack(project_t *q, const uint8_t *b)
     memset(q, 0, sizeof *q); q->magic = PROJ_MAGIC; q->size = sizeof *q;
     memcpy(q->g,b+8,2u*PROJ_GLOBALS);
     for(i=G_MFXTYPE;i<G_COUNT;i++)q->g[i]=GP[i].def;
+    q->g[G_GROOVE]=0;                               /* (its wire bytes are the master FX's: the tail holds it, below) */
     if(magic==PROJ_MAGIC || magic==PROJ_CUT_MAGIC || magic==PROJ_PRE_HP_MAGIC || magic==0x46554E46u){
         if(b[PROJ_FX_WIRE_OFF]!='M' || b[PROJ_FX_WIRE_OFF+1u]!='F' || b[PROJ_FX_WIRE_OFF+2u]!='X' || b[PROJ_FX_WIRE_OFF+3u]>127u)return 0;
         q->g[G_FXRETURN]=b[PROJ_FX_WIRE_OFF+3u];
@@ -400,8 +402,9 @@ static int proj_unpack(project_t *q, const uint8_t *b)
     if(magic==PROJ_MAGIC || magic==PROJ_CUT_MAGIC || magic==PROJ_PRE_HP_MAGIC){if(b[PROJ_FX_MODE_OFF]>1u || b[PROJ_FX_MODE_OFF+1u])return 0;q->g[G_FXMODE]=b[PROJ_FX_MODE_OFF];}
     for(i=0;i<FX_SLOTS && (magic==PROJ_MAGIC || magic==PROJ_CUT_MAGIC);i++){
         uint32_t lo=b[PROJ_TONE_WIRE+i],hi=b[PROJ_LP_WIRE+i];
-        if(magic==PROJ_MAGIC ? lo<64u-FX_TONE_MAX || lo>64u+FX_TONE_MAX || hi : lo>127u || hi>127u)return 0;
+        if(magic==PROJ_MAGIC ? lo<64u-FX_TONE_MAX || lo>64u+FX_TONE_MAX || (i ? hi : hi>=GROOVE_N) : lo>127u || hi>127u)return 0;
         q->g[G_MFXTONE+i]=magic==PROJ_MAGIC?(int16_t)((int32_t)lo-64):proj_tone_of_cuts((int32_t)lo,(int32_t)hi);
+        if(magic==PROJ_MAGIC && !i)q->g[G_GROOVE]=(int16_t)hi;   /* (Rumiboard: the groove, in the first tail byte) */
     }
     q->g[G_RESERVED24]=0;
     if(magic==0x46554E44u)for(i=G_RESERVED4;i<=G_RESERVED11;i++)q->g[i]=0;

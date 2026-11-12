@@ -58,6 +58,7 @@ static const char *const N_STROKE[] = {"DOWN", "UP", "ALT"};
 static const char *const N_VOIC[] = {"CLOSE", "OPEN", "INV1", "INV2", "+OCT"};   /* VC_CLOSE .. VC_BASS */
 static const char *const N_VOICE[] = {"POLY", "MONO", "LEG", "UNI"};   /* V_POLY .. V_UNISON */
 static const char *const N_GLMODE[] = {"RATE", "TIME"};
+static const char *const N_GROOVE[] = {"OFF", "DILLA", "DRAG", "RUSH"};   /* GROOVE_OFF .. (seq.c GROOVES) */
 static const char *const N_PRIO[] = {"LAST", "LOW", "HIGH"};
 static const char *const N_ALLOC[] = {"ROT", "REUSE"};
 static const char *const N_ORDER[] = {"NOTE", "PLAY"};
@@ -285,7 +286,7 @@ static const param_desc_t GP[G_COUNT] = {
     [G_RESERVED7] = PD("", F_INT, 0, 127, 0),
     [G_RESERVED8] = PD("", F_INT, 0, 127, 0),
     [G_RESERVED9] = PD("", F_INT, 0, 127, 0),
-    [G_RESERVED10] = PD("", F_INT, 0, 127, 0),
+    [G_GROOVE] = PE("FEEL", N_GROOVE, 0),           /* (Rumiboard, on G_RESERVED10: the groove, docs/GROOVE.md) */
     [G_RESERVED11] = PD("", F_INT, 0, 127, 0),
     [G_MIDI] = PE("MIDI", N_MIDI_INPUT, 0),
     [G_DRUMCH] = PE("DRUM", N_DRUMCH, 10),
@@ -709,7 +710,7 @@ static const page_t PAGES[] = {
     {"ARP 2", FAM_ARP, SC_TRACK, GR_NONE, {P_ASWING, P_APROB, P_AHOLD, P_AORDER}},
     {"NOTES", FAM_SEQ, SC_STEP, GR_ROLL, {0, 1, 2, 3}},
     {"PATTERN", FAM_SEQ, SC_TRACK, GR_STEPS, {P_SLEN, P_SDIV, P_SSWING, P_SGATE}},
-    {"TEMPO", FAM_SEQ, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_PROJECT_RECQ, 0xFF}},   /* project speed, swing and recording grid */
+    {"TEMPO", FAM_SEQ, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_PROJECT_RECQ, G_GROOVE}},   /* project speed, swing, recording grid, groove */
     {"MIXER", FAM_TRK, SC_TRK, GR_TRK, {0, 1, 2, 3}},   /* GLO button; LEVEL PAN MUTE */
     {"PATTERNS", FAM_SEQ, SC_GLOBAL, GR_PATGRID, {0xFF, 0xFF, 0xFF, 0xFF}},   /* the 4 x 8 grid: KNOB k track k's (ui_stage.c) */
     {"SONG", FAM_SEQ, SC_GLOBAL, GR_SONG, {0xFF, 0xFF, 0xFF, 0xFF}},
