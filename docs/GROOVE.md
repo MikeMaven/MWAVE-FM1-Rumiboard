@@ -47,11 +47,13 @@ the step waits. The transport's start and stop clear both. The clock, the click,
 stay on the grid: a part played along to the heard drums records where it was played against the grid, as on
 the MPC. `tests/groove_test.c` plays a bar and measures each element against its step.
 
-A DRUM track's live take (hits recorded with QNT OFF keep their played timing and play from the recording,
-their grid cells only an overview) takes the feel too: with a FEEL on, its lane hits play from the grid, on
+A DRUM track's hits entered on **SEQ > DRUM HIT**, and a live take (QNT OFF keeps the played timing), are
+recorded events: they play from the recording, their grid cells only an overview (the grid of SEQ > STEP
+enters plain hits). They take the feel too: with a FEEL on, its lane hits play from the grid, on
 their steps and shifted like entered hits, and not from the recording, which would play them unshifted a few
 milliseconds apart (a flam); OFF plays the take as played again. A take's other GM drums (a crash, a low tom)
-stay the recording's. `tests/groove_test.c` records a take and checks each hit plays once.
+stay the recording's. `tests/groove_test.c` records a take and `tests/groove_ui_test.c` enters hits on DRUM
+HIT and on the grid through the UI; both check each hit plays once, at its shifted time.
 
 The firmware costs: 416 bytes of RAM (the queues), about 1 KB of flash.
 

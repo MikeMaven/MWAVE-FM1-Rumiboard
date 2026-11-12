@@ -429,6 +429,7 @@ if core && [ $TABLES = 1 ]; then
     t "DX7 librarian: USB voice/bank receive, dump replies and malformed frame recovery" fm6_sysex_test $FW
     t "SWING: track + global at most 100, sequencer step lengths, the SWG display" swing_test -O2 $FW
     t "GROOVE: the Dilla shifts (the kick late, the snare early, the off-beat hats late, the bass behind), the project wire" groove_test -O2 $FW
+    t "GROOVE through the UI: hits from SEQ > DRUM HIT (recorded events) and the grid each play once, shifted" groove_ui_test -DMELODEE_USB_AUDIO=1 $FW
     t "GLO double-tap lock, SCL tap navigation, SCREEN OFF, LFO 2 SYNC / TRIG / POL" layer_screen_test \
         -O1 -DMELODEE_USB_AUDIO=1 $FW
     t "DRUM EDITOR: synthesized 909, sound controls, individual pitch/length, undo and storage" drum_editor_test -O2 $FW
