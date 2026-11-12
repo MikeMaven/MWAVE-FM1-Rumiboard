@@ -34,6 +34,12 @@ Preset numbers are the stored ones (the engine's own count). The Prophet's RUMI 
 categories: `browse.c PRESET_CAT` (the stab is BRASS, as Melodee files stabs: the bulldog); a bass category
 puts the track behind the beat under the Dilla FEEL (docs/GROOVE.md).
 
+## Finding them on the device
+
+Press SAVE until the page reads PRESETS (its third press: USER, PROJECT, PRESETS). KNOB 4 changes the engine and
+lands on its first sound, the RUMI bank's; KNOB 2 walks the list (the bank, INIT, the factory sounds); KNOB 1 picks
+a LIST (ALL, FAV, RECENT, a category). On HOME the PRESETS knob walks the same list across every engine.
+
 ## Hearing them on the host
 
 `build/host/hostsim ENGINE PRESET MONO OUT.wav` with `PRESET=1` loads the whole preset (the Prophet's program,

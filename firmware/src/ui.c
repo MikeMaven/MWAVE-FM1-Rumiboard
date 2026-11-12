@@ -1089,6 +1089,7 @@ static void engine_load_of(track_t *t, uint32_t ei, uint32_t pi)
 /* the engine's defaults and its first sound in the browser (browse.c preset_first: its RUMI bank's first, else the
  * PROPHET's first Sequential program, not INIT, else preset 0) */
 static uint32_t preset_first(uint32_t e);
+static uint32_t preset_rumi_first(uint32_t e);
 static void set_engine_of(track_t *t, uint32_t ei) { engine_load_of(t, ei, preset_first(ei)); }
 
 /* the engine's own starting point, nothing changed: its INIT preset (Prophet, CZ-1, SID, FM6: "INIT .."), else
@@ -1121,9 +1122,10 @@ static void track_defaults(track_t *t)
 }
 
 /* switch engine (its INIT sound: one starts a sound from there, the browser's next turn its presets) and say so */
-static void select_engine(uint32_t e)
+static void select_engine(uint32_t e)                /* the browser's ENGINE knob: the engine's first sound in its list
+                                                      * (its RUMI bank's first; without one its INIT, as before) */
 {
-    sound_init_of(TSEL, e);
+    engine_load_of(TSEL, e, preset_rumi_first(e) < ENGINES[e % NENGINES]->npresets ? preset_first(e) : preset_init(e));
     ui_say("ENGINE ", ENGINES[TSEL->eng_req]->name);
     ui.force = 1;
 }

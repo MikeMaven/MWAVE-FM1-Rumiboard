@@ -2205,7 +2205,8 @@ static int test_patterns_queue(void)
     return bad;
 }
 
-/* Init sound: the engine's INIT (FM6: INIT VOICE after F24, dry); the browser's ENGINE knob loads it, its INIT first
+/* Init sound: the engine's INIT (FM6: INIT VOICE after F24, dry); the browser's ENGINE knob lands on the engine's first
+ * sound (its RUMI bank's; an engine without one: its INIT), the bank first in its list, then INIT
  * in the list. SCALES: no picker over its own list. PATTERNS: OCT+ the pattern's sheet; Copy to (the first empty
  * place, any knob moves it, OCT+ copies, over a pattern in use the question first, OCT- leaves); Delete pattern */
 static int test_init_scales_patterns(void)
@@ -2240,23 +2241,22 @@ static int test_init_scales_patterns(void)
     go_page(GR_BROWSE); frame();
     list_set(LM_ALL);
     turn(EN_K4, -1);
-    bad += check("INIT: the browser's ENGINE knob: the Prophet, its INIT", TSEL->eng_req == ENGI_PROPHET && !TSEL->preset);
+    bad += check("the browser's ENGINE knob: the Prophet, on its first sound: the RUMI bank's", TSEL->eng_req == ENGI_PROPHET &&
+                 TSEL->preset == P5_SEQUENTIAL_N + 1u);
     turn(EN_K4, 1);
-    bad += check("..again: FM6, its INIT VOICE", TSEL->eng_req == ENGI_FM6 && TSEL->preset == FM6_NFAC);
+    bad += check("..again: FM6, on RUMI TINES", TSEL->eng_req == ENGI_FM6 && TSEL->preset == FM6_NFAC + 1u);
+    turn(EN_K2, -1);
+    ok = TSEL->eng_req == ENGI_PROPHET && TSEL->preset == P5_SEQUENTIAL_N;
     turn(EN_K2, 1);
-    ok = TSEL->eng_req == ENGI_FM6 && !TSEL->preset;
-    turn(EN_K2, -1);
-    bad += check("..INIT VOICE first in FM6's sounds: KNOB 2 on, F1; back: INIT VOICE", ok && TSEL->eng_req == ENGI_FM6 &&
-                 TSEL->preset == FM6_NFAC);
-    turn(EN_K2, -1);
-    bad += check("..back again: the RUMI bank's last FM6 voice (the bank leads FM6's list, before INIT VOICE)",
-                 TSEL->eng_req == ENGI_FM6 && TSEL->preset == FM6_NFAC + FM6_NRUMI);
+    bad += check("..KNOB 2 back: the Prophet's last program (Sequential's 200); on again: RUMI TINES", ok &&
+                 TSEL->eng_req == ENGI_FM6 && TSEL->preset == FM6_NFAC + 1u);
     {
         uint32_t j;
-        for (j = 0; j < FM6_NRUMI; j++) turn(EN_K2, -1);
+        for (j = 0; j < FM6_NRUMI; j++) turn(EN_K2, 1);
     }
-    bad += check("..back past the bank: the Prophet's last program (Sequential's 200)", TSEL->eng_req == ENGI_PROPHET &&
-                 TSEL->preset == P5_SEQUENTIAL_N);
+    ok = TSEL->eng_req == ENGI_FM6 && TSEL->preset == FM6_NFAC;
+    turn(EN_K2, 1);
+    bad += check("..past the bank: INIT VOICE, then F1", ok && TSEL->eng_req == ENGI_FM6 && !TSEL->preset);
 
     ui_power_on();
     go_title("SCALES"); frame();
